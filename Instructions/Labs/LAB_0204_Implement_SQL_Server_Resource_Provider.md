@@ -1,166 +1,171 @@
 ---
 lab:
-    title: '랩: Azure Stack Hub에서 SQL Server 리소스 공급자 구현'
-    module: '모듈 2: 서비스 제공'
+  title: ラボ:SQL Server リソース プロバイダーを Azure Stack Hub に実装する
+  module: 'Module 2: Provide Services'
+ms.openlocfilehash: 76aa2946e5adb7bc82368595813707e49c85088a
+ms.sourcegitcommit: f99a365741ad02181da3b4fc4a921d5437810bc2
+ms.translationtype: HT
+ms.contentlocale: ja-JP
+ms.lasthandoff: 03/02/2022
+ms.locfileid: "139252340"
 ---
+# <a name="lab---implement-sql-server-resource-provider-in-azure-stack-hub"></a>ラボ - SQL Server リソース プロバイダーを Azure Stack Hub に実装する
+# <a name="student-lab-manual"></a>受講生用ラボ マニュアル
 
-# 랩 - Azure Stack Hub에서 SQL Server 리소스 공급자 구현
-# 학생 랩 매뉴얼
+## <a name="lab-dependencies"></a>ラボの依存関係
 
-## 랩 종속성
+- なし
 
-- 없음
+## <a name="estimated-time"></a>推定所要時間
 
-## 예상 소요 시간
+150 分
 
-150분
+## <a name="lab-scenario"></a>ラボのシナリオ
 
-## 랩 시나리오
+あなたは Azure Stack Hub 環境のオペレーターとして、 テナントが SQL Server データベースをデプロイできるようにする必要があります。 
 
-여러분은 Azure Stack Hub 환경의 운영자입니다. 테넌트가 SQL Server 데이터베이스를 배포하도록 허용해야 합니다. 
+## <a name="objectives"></a>目標
 
-## 목표
+このラボを完了すると、次のことができるようになります。
 
-이 랩을 완료하면 다음을 수행할 수 있습니다.
+- SQL Server リソース プロバイダーを Azure Stack Hub に実装する
 
-- Azure Stack Hub에서 SQL Server 리소스 공급자 구현
+## <a name="lab-environment"></a>ラボ環境 
 
-## 랩 환경 
+このラボでは、Active Directory フェデレーション サービス (AD FS) (ID プロバイダーとしてバックアップされた Active Directory) に統合された ADSK インスタンスを使用します。 
 
-이 랩에서는 AD FS(Active Directory Federation Services)와 통합된 ASDK 인스턴스(ID 공급자로 백업된 Active Directory)를 사용합니다. 
+ラボ環境は次のように構成されています。
 
-랩 환경의 구성은 다음과 같습니다.
+- 次のアクセス ポイントを持つ、**AzS-HOST1** サーバーで実行されている ASDK デプロイ。
 
-- 다음 액세스 지점을 사용하여 **AzS-HOST1** 서버에서 실행되는 ASDK 배포:
+  - 管理者ポータル: https://adminportal.local.azurestack.external
+  - 管理者の ARM エンドポイント: https://adminmanagement.local.azurestack.external
+  - ユーザー ポータル: https://portal.local.azurestack.external
+  - ユーザーの ARM エンドポイント: https://management.local.azurestack.external
 
-  - 관리자 포털: https://adminportal.local.azurestack.external
-  - 관리자 ARM 엔드포인트: https://adminmanagement.local.azurestack.external
-  - 사용자 포털: https://portal.local.azurestack.external
-  - 사용자 ARM 엔드포인트: https://management.local.azurestack.external
+- 管理ユーザー:
 
-- 관리자:
+  - ASDK クラウド オペレーターのユーザー名: **CloudAdmin@azurestack.local**
+  - ASDK クラウド オペレーターのパスワード:**Pa55w.rd1234**
+  - ASDK ホスト管理者のユーザー名: **AzureStackAdmin@azurestack.local**
+  - ASDK ホスト管理者のパスワード:**Pa55w.rd1234**
 
-  - ASDK 클라우드 운영자 사용자 이름: **CloudAdmin@azurestack.local**
-  - ASDK 클라우드 운영자 암호: **Pa55w.rd1234**
-  - ASDK 호스트 관리자 사용자 이름: **AzureStackAdmin@azurestack.local**
-  - ASDK 호스트 관리자 암호: **Pa55w.rd1234**
-
-이 랩을 진행하면서 PowerShell을 통해 Azure Stack Hub를 관리하는 데 필요한 소프트웨어를 설치합니다. 
-
-
-### 연습 1: Azure Stack Hub에서 SQL Server 리소스 공급자 설치
-
-이 연습에서는 Azure Stack Hub에서 SQL Server 리소스 공급자를 설치합니다.
-
-1. SQL Server 리소스 공급자 바이너리 다운로드 
-1. SQL Server 리소스 공급자 설치
-1. SQL Server 리소스 공급자 설치 확인
-
->**참고**: 이 연습을 최대한 빠른 시간 내에 끝낼 수 있도록 Azure Stack Hub SQL Server 리소스 공급자를 설치하려면 수행해야 하는 다음을 비롯한 일부 작업은 이미 완료된 상태입니다.
-
-- Azure Marketplace 신디케이션 구현
-- Azure Marketplace에서 **Microsoft AzureStack 추가 기능 RP Windows Server** 다운로드
-
-#### 작업 1: SQL Server 리소스 공급자 바이너리 다운로드
-
-이 작업에서는 다음을 수행합니다.
-
-- SQL Server 리소스 공급자 바이너리 다운로드
-
-1. 필요한 경우 다음 자격 증명을 사용하여 **AzS-HOST1**에 로그인합니다.
-
-    - 사용자 이름: **AzureStackAdmin@azurestack.local**
-    - 암호: **Pa55w.rd1234**
-
-1. **AzS-HOST1**에 연결된 원격 데스크톱 세션 내에서 [Azure Stack Hub 관리자 포털](https://adminportal.local.azurestack.external/)이 표시된 웹 브라우저 창을 열고 CloudAdmin@azurestack.local로 로그인합니다.
-1. **AzSHOST-1**에 연결된 원격 데스크톱 세션 내의 Azure Stack 관리자 포털이 표시된 웹 브라우저 내 허브 메뉴에서 **모든 서비스**를 클릭합니다.
-1. **모든 서비스** 블레이드에서 **Marketplace 관리**를 검색하여 해당 항목을 선택합니다.
-1. Marketplace 관리 블레이드에서 사용 가능한 서비스 목록에 **Microsoft AzureStack 추가 기능 RP Windows Server**가 표시되어 있는지 확인합니다.
-1. **AzSHOST-1**에 연결된 원격 데스크톱 세션 내에서 다른 웹 브라우저 창을 시작합니다. 그런 다음 (https://aka.ms/azshsqlrp11931) 에서 SQL 리소스 공급자 자동 압축 풀기 실행 파일을 다운로드하여 **C:\\Downloads\\SQLRP** 폴더에 해당 파일의 압축을 풉니다(폴더를 먼저 만들어야 함).
+このラボでは、PowerShell を介して Azure Stack Hub を管理するために必要なソフトウェアをインストールします。 
 
 
-#### 작업 2: SQL Server 리소스 공급자 설치
+### <a name="exercise-1-install-the-sql-server-resource-provider-in-azure-stack-hub"></a>演習 1:SQL Server リソース プロバイダーを Azure Stack Hub にインストールする
 
-이 작업에서는 다음을 수행합니다.
+この演習では、SQL Server リソース プロバイダーを Azure Stack Hub にインストールします。
 
-- SQL Server 리소스 공급자 설치
+1. SQL Server リソース プロバイダー バイナリをダウンロードする 
+1. SQL Server リソース プロバイダーをインストールする
+1. SQL Server リソース プロバイダーのインストールを確認する
 
-1. AzSHOST-1에 연결된 원격 데스크톱 세션 내에서 관리자로 Windows PowerShell을 시작합니다.
+>**注**:演習の所要時間を可能な限り短縮するため、Azure Stack Hub SQL Server リソース プロバイダーのインストールに必要な、以下をはじめとする一部のタスクはすでに完了した状態となっています。
 
-    > **참고:** 새 PowerShell 세션을 시작하세요.
+- Azure Marketplace シンジケーションを実装する
+- **Microsoft AzureStack Add-On RP Windows Server** を Azure Marketplace からダウンロードする
 
-1. **관리자: Windows PowerShell** 프롬프트에서 다음 명령을 실행하여 신뢰할 수 있는 리포지토리로 PowerShell 갤러리를 구성합니다.
+#### <a name="task-1-download-sql-server-resource-provider-binaries"></a>タスク 1:SQL Server リソース プロバイダー バイナリをダウンロードする
+
+このタスクでは次のことを行います。
+
+- SQL Server リソース プロバイダー バイナリをダウンロードする
+
+1. 必要であれば、次の資格情報を使用して **AzS-HOST1** にサインインします。
+
+    - ユーザー名: **AzureStackAdmin@azurestack.local**
+    - パスワード: **Pa55w.rd1234**
+
+1. **AzS-HOST1** へのリモート デスクトップ セッション内で、Web ブラウザー ウィンドウを開いて [Azure Stack Hub 管理者ポータル](https://adminportal.local.azurestack.external/)を表示し、CloudAdmin@azurestack.local としてサインインします。
+1. **AzSHOST-1** へのリモート デスクトップ セッション内で、Web ブラウザーに Azure Stack 管理者ポータルが表示されている状態で、ハブ メニューの「**すべてのサービス**」をクリックします。
+1. 「**すべてのサービス**」ブレードで、「**Marketplace Management**」を検索して選択します。
+1. 「Marketplace Management」ブレードで、利用可能なサービスの一覧に **Microsoft AzureStack Add-On RP Windows Server**」が表示されていることを確認します。
+1. **AzSHOST-1** へのリモート デスクトップ セッション内で、別の Web ブラウザー ウィンドウを開き、SQL リソース プロバイダーの自己展開型の実行可能ファイルを (https://aka.ms/azshsqlrp11931) からダウンロードし、そのコンテンツを **C:\\ Downloads\\ SQLRP** フォルダーに展開します (最初にフォルダーを作成する必要があります)。
+
+
+#### <a name="task-2-install-the-sql-server-resource-provider"></a>タスク 2:SQL Server リソース プロバイダーをインストールする
+
+このタスクでは次のことを行います。
+
+- SQL Server リソース プロバイダーをインストールする
+
+1. **AzSHOST-1** へのリモート デスクトップ セッション内で、管理者として Windows PowerShell を起動します。
+
+    > **注:**  必ず新しい PowerShell セッションを起動してください。
+
+1. **[管理者:Windows PowerShell]** プロンプトから以下を実行して、PowerShell ギャラリーを信頼されたレポジトリとして構成します
 
     ```powershell
     Set-PSRepository -Name 'PSGallery' -InstallationPolicy Trusted
     ```
 
-1. **관리자: Windows PowerShell** 프롬프트에서 다음 명령을 실행하여 SQL Server 리소스 공급자에 필요한 AzureRM.Bootstrapper 모듈 버전을 설치합니다.
+1. **[管理者:Windows PowerShell]** プロンプトから以下を実行して、SQL Server リソース プロバイダーに必要な AzureRM.Bootstrapper モジュールのバージョンをインストールします。
 
     ```powershell
     Get-Module -Name Azs.* -ListAvailable | Uninstall-Module -Force -Verbose
     Get-Module -Name Azure* -ListAvailable | Uninstall-Module -Force -Verbose
 
-    Install-Module -Name AzureRm.BootStrapper -RequiredVersion 0.5.0 -Force
-    Install-Module -Name AzureStack -RequiredVersion 1.6.0
+    Install-Module -Name Az.BootStrapper -Force
+    Install-AzProfile -Profile 2020-09-01-hybrid -Force
     ```
 
-1. **관리자: Windows PowerShell** 프롬프트에서 다음 명령을 실행하여 신뢰할 수 있는 리포지토리로 PowerShell 갤러리를 구성합니다.
+1. **[管理者:Windows PowerShell]** プロンプトで以下を実行して、Azure Stack Hub オペレーターの PowerShell 環境を登録します。
 
     ```powershell
-    Add-AzureRmEnvironment -Name 'AzureStackAdmin' -ArmEndpoint 'https://adminmanagement.local.azurestack.external' `
-       -AzureKeyVaultDnsSuffix adminvault.local.azurestack.external `
-       -AzureKeyVaultServiceEndpointResourceId https://adminvault.local.azurestack.external
+    Add-AzEnvironment -Name 'AzureStackAdmin' -ArmEndpoint 'https://adminmanagement.local.azurestack.external' `
+      -AzureKeyVaultDnsSuffix adminvault.local.azurestack.external `
+      -AzureKeyVaultServiceEndpointResourceId https://adminvault.local.azurestack.external
     ```
 
-1. **관리자: Windows PowerShell** 프롬프트에서 다음 명령을 실행하여 현재 환경을 설정합니다.
+1. **[管理者:Windows PowerShell]** プロンプトで以下を実行して、現在の環境を設定します。
 
     ```powershell
-    Set-AzureRmEnvironment -Name 'AzureStackAdmin'
+    Set-AzEnvironment -Name 'AzureStackAdmin'
     ```
 
-1. **관리자: Windows PowerShell** 프롬프트에서 다음 명령을 실행하여 핸재 환경에 인증합니다(메시지가 표시되면 암호로 **Pa55w.rd1234**를 사용해 **CloudAdmin@azurestack.local** 사용자로 로그인).
+1. **[管理者:Windows PowerShell]** プロンプトで以下を実行して、現在の環境に対して認証を行います (サインインを求められたら、 **CloudAdmin@azurestack.local** ユーザーとしてサインインし、パスワードに **Pa55w.rd1234** と入力します)。
 
     ```powershell
-    Connect-AzureRmAccount -EnvironmentName 'AzureStackAdmin'
+    Connect-AzAccount -EnvironmentName 'AzureStackAdmin'
     ```
 
-1. **관리자: Windows PowerShell** 프롬프트에서 다음 명령을 실행하여 인증이 정상적으로 완료되었으며 해당 컨텍스트가 설정되었음을 확인합니다.
+1. **[管理者:Windows PowerShell]** プロンプトで以下を実行し、認証に成功したことと、対応するコンテキストが設定されたことを確認します。
 
     ```powershell
-    Get-AzureRmContext
+    Get-AzContext
     ```
 
-1. **관리자: Windows PowerShell** 프롬프트에서 다음 명령을 실행하여 SQL Server 리소스 공급자를 설치하는 데 필요한 변수를 설정합니다.
+1. **[管理者:Windows PowerShell]** プロンプトで以下を実行して、SQL Server リソース プロバイダーのインストールに必要な変数を設定します。
 
     ```powershell
     $domain = 'azurestack.local'
     $privilegedEndpoint = 'AzS-ERCS01'
     $downloadDir = 'C:\Downloads\SQLRP'
 
-    # AzureStack\AzureStackAdmin 자격 증명 설정
+    # Set the AzureStack\AzureStackAdmin credentials
     $serviceAdmin = 'AzureStackAdmin@azurestack.local'
     $serviceAdminPass = ConvertTo-SecureString 'Pa55w.rd1234' -AsPlainText -Force
     $serviceAdminCreds = New-Object System.Management.Automation.PSCredential ($serviceAdmin, $serviceAdminPass)
 
-    # AzureStack\CloudAdmin 자격 증명 설정
+    # Set the AzureStack\CloudAdmin credentials
     $cloudAdminName = 'AzureStack\CloudAdmin'
     $cloudAdminPass = ConvertTo-SecureString 'Pa55w.rd1234' -AsPlainText -Force
     $cloudAdminCreds = New-Object PSCredential($cloudAdminName, $cloudAdminPass)
 
-    # 새 리소스 공급자 VM 로컬 관리자 계정 설정
+    # Set credentials for the new resource provider VM local admin account
     $vmLocalAdminPass = ConvertTo-SecureString 'Pa55w.rd1234' -AsPlainText -Force
     $vmLocalAdminCreds = New-Object System.Management.Automation.PSCredential ('sqlrpadmin', $vmLocalAdminPass)
 
     # Set a password that will protect the private key of a self-signed certificate generated to secure the SQL Server resource provider
     $pfxPass = ConvertTo-SecureString 'Pa55w.rd1234pfx' -AsPlainText -Force
 
-    # SQL Server 리소스 공급자 모듈을 포함하도록 PowerShell 모듈 경로 환경 변수 업데이트
+    # Update the PowerShell module path environment variable to include the SQL Server resource provider modules
     $rpModulePath = Join-Path -Path $env:ProgramFiles -ChildPath 'SqlMySqlPsh'
     $env:PSModulePath = $env:PSModulePath + ';' + $rpModulePath 
     ```
 
-1. **관리자: Windows PowerShell** 프롬프트에서 현재 디렉터리를 SQL Server 리소스 공급자 설치 파일의 압축을 풀었던 위치로 변경하고 DeploySQLProvider.ps1 스크립트를 실행합니다.
+1. **[管理者:Windows PowerShell]** プロンプトで、現在のディレクトリを、展開した SQL Server リソース プロバイダーのインストール ファイルの場所に変更し、DeploySQLProvider.ps1 スクリプトを実行します。
 
     ```powershell
     Set-Location -Path 'C:\Downloads\SQLRP'
@@ -173,289 +178,289 @@ lab:
         -DefaultSSLCertificatePassword $pfxPass
     ```
 
-    > **참고:** 설치가 완료될 때까지 기다립니다. 1시간 정도 걸릴 수 있습니다.
+    > **注**: インストールが完了するまで待ちます。 1 時間ほどかかる場合があります。
 
-#### 작업 3: SQL Server 리소스 공급자 설치 확인
+#### <a name="task-3-verify-installation-of-the-sql-server-resource-provider"></a>タスク 3:SQL Server リソース プロバイダーのインストールを確認する
 
-이 작업에서는 다음을 수행합니다.
+このタスクでは次のことを行います。
 
-- SQL Server 리소스 공급자 설치 확인
+- SQL Server リソース プロバイダーのインストールを確認する
 
-1. **AzS-HOST1**에 연결된 원격 데스크톱 세션 내에서 Azure Stack 관리자 포털이 표시된 웹 브라우저 창으로 전환한 다음 허브 메뉴에서 **리소스 그룹**을 클릭합니다. 
-1. **리소스 그룹** 블레이드에서 **system.local.sqladapter**를 클릭합니다.
-1. **system.local.sqladapter** 블레이드에서 **배포** 항목을 검토하여 모든 배포가 정상적으로 완료되었는지 확인합니다.
-1. Azure Stack 관리자 포털에서 **가상 머신**으로 이동하여 SQL 리소스 공급자 VM이 정상적으로 생성되어 실행되고 있는지 확인합니다.
-1. **AzS-HOST1**에 연결된 원격 데스크톱 세션 내에서 [Azure Stack Hub 테넌트 포털](https://portal.local.azurestack.external/)이 표시된 웹 브라우저 창을 열고 메시지가 표시되면 CloudAdmin@azurestack.local로 로그인합니다.
-1. Azure Stack Hub 테넌트 포털의 허브 메뉴에서 **리소스 만들기**를 클릭합니다.
-1. **새로 만들기** 블레이드에서 **데이터 + 스토리지**를 선택하고 사용 가능한 리소스 종류 목록에 **SQL 데이터베이스**가 표시되는지 확인합니다.
+1. **AzS-HOST1** へのリモート デスクトップ セッション内で、Azure Stack 管理者ポータルが表示されている Web ブラウザーの画面に切り替え、ハブ メニューの「**リソース グループ**」をクリックします。 
+1. 「**リソース グループ**」ブレードで「**system.local.sqladapter**」をクリックします。
+1. 「**system.local.sqladapter**」ブレードで「**デプロイ**」エントリを確認し、すべてのデプロイに成功したことを検証します。
+1. Azure Stack 管理者ポータルで「**仮想マシン**」に移動し、SQL リソース プロバイダーが正常に作成され、実行されていることを確認します。
+1. **AzS-HOST1** へのリモート デスクトップ セッション内で、Web ブラウザー ウィンドウを開いて [Azure Stack Hub テナント ポータル](https://portal.local.azurestack.external/)を表示させ、サインインを求められたら CloudAdmin@azurestack.local としてサインインします。
+1. Azure Stack Hub テナント ポータルのハブ メニューで、「**リソースの作成**」をクリックします。
+1. 「**新規作成**」ブレードで「**データとストレージ**」を選択し、利用可能なリソースの種類の一覧に「**SQL データベース**」が表示されることを確認します。
 
->**검토**: 이 연습에서는 Azure Stack Hub에서 SQL Server 리소스 공급자를 설치했습니다.
+>**レビュー**:この演習では、SQL Server リソース プロバイダーを Azure Stack Hub にインストールしました。
 
 
-### 연습 2: Azure Stack Hub에서 SQL Server 리소스 공급자 구성
+### <a name="exercise-2-configure-sql-server-resource-provider-in-azure-stack-hub"></a>演習 2:SQL Server リソース プロバイダーを Azure Stack Hub で構成する
 
-이 연습에서는 Azure Stack Hub에서 SQL Server 리소스 공급자를 구성합니다.
+この演習では、SQL Server リソース プロバイダーを Azure Stack Hub で構成します。
 
-1. SQL Server 호스팅 서버용 요금제, 제안 및 구독 만들기(클라우드 운영자 역할)
-1. SQL Server 호스팅 서버로 사용할 Azure Stack Hub VM 배포(클라우드 운영자 역할)
-1. SQL 호스팅 서버 추가(클라우드 운영자 역할)
-1. 사용자에게 SQL 데이터베이스 제공(클라우드 운영자 역할)
-1. SQL 데이터베이스 만들기(사용자 역할)
+1. (クラウド オペレーターとして) SQL Server ホスティング サーバー用のプラン、オファー、サブスクリプションを作成する
+1. (クラウド オペレーターとして) SQL Server ホスティング サーバーの役割を担う Azure Stack Hub VM をデプロイする
+1. (クラウド オペレーターとして) SQL ホスティング サーバーを追加する
+1. (クラウド オペレーターとして) ユーザーが SQL データベースを使用できるようにする
+1. (ユーザーとして) SQL データベースを作成する
 
->**참고**: 이 연습을 최대한 빠른 시간 내에 끝낼 수 있도록 Azure Stack Hub SQL Server 리소스 공급자 구성을 원활하게 진행하려면 수행해야 하는 다음을 비롯한 일부 작업은 이미 완료된 상태입니다.
+>**注**:演習の所要時間を可能な限り短縮するため、Azure Stack Hub SQL Server リソース プロバイダーの構成を促進することを目的とした、以下をはじめとする一部のタスクはすでに完了しています。
 
-- Azure Marketplace에서 SQL Server 이미지 다운로드
-- Azure Marketplace에서 **Sql IaaS VM 확장** 다운로드
+- Azure Marketplace の SQL Server イメージをダウンロードする
+- Azure Marketplace から **Sql IaaS VM 拡張機能** をダウンロードする
 
 
-#### 작업 1: SQL Server 호스팅 서버용 요금제, 제안 및 구독 만들기(클라우드 운영자 역할)
+#### <a name="task-1-create-a-plan-offer-and-subscription-for-a-sql-server-hosting-server-as-a-cloud-operator"></a>タスク 1:(クラウド オペレーターとして) SQL Server ホスティング サーバー用のプラン、オファー、サブスクリプションを作成する
 
-이 작업에서는 다음을 수행합니다.
+このタスクでは次のことを行います。
 
-- SQL Server 호스팅 서버용 요금제, 제안 및 구독 만들기(클라우드 운영자 역할)
+- (クラウド オペレーターとして) SQL Server ホスティング サーバー用のプラン、オファー、サブスクリプションを作成する
 
-1. **AzS-HOST1**에 연결된 원격 데스크톱 세션 내에서 [Azure Stack Hub 관리자 포털](https://adminportal.local.azurestack.external/)이 표시된 웹 브라우저 창을 열고 CloudAdmin@azurestack.local로 로그인합니다.
-1. Azure Stack Hub 관리자 포털이 표시된 웹 브라우저 창에서 **+ 리소스 만들기**를 클릭합니다.
-1. **새로 만들기** 블레이드에서 **제안+요금제**를 클릭한 다음 **요금제**를 클릭합니다.
-1. **새 요금제** 블레이드의 **기본** 탭에서 다음 설정을 지정합니다.
+1. **AzS-HOST1** へのリモート デスクトップ セッション内で、Web ブラウザー ウィンドウを開いて [Azure Stack Hub 管理者ポータル](https://adminportal.local.azurestack.external/)を表示し、CloudAdmin@azurestack.local としてサインインします。
+1. Web ブラウザーの画面に Azure Stack Hub 管理者ポータルが表示されている状態で、「 **+ リソースの作成**」をクリックします。
+1. 「**新規作成**」ブレードで、「**オファーとプラン**」をクリックしてから「**プラン**」をクリックします。
+1. 「**新しいプラン**」ブレードの「**基本**」タブで、次のように設定を行います。
 
-    - 표시 이름: **sql-server-hosting-plan1**
-    - 리소스 이름: **sql-server-hosting-plan1**
-    - 리소스 그룹: 새 리소스 그룹 **sql-server-hosting-plans-RG**의 이름.
+    - 表示名: **sql-server-hosting-plan1**
+    - リソース名: **sql-server-hosting-plan1**
+    - リソース グループ: 新しいリソース グループの名前 **sql-server-hosting-plans-RG**
 
-1. **다음: 서비스 >** 를 클릭합니다.
-1. **새 요금제** 블레이드의 **서비스** 탭에서 **Microsoft.Compute**, **Microsoft.Storage** 및 **Microsoft.Network** 체크박스를 선택합니다.
-1. **다음: 할당량>** 을 클릭합니다.
-1. **새 요금제** 블레이드의 **할당량** 탭에서 다음 설정을 지정합니다.
+1. **[次へ: サービス >]** をクリックします。
+1. 「**新しいプラン**」ブレードの「**サービス**」タブで、「**Microsoft.Compute**」、「**Microsoft.Storage**」、「**Microsoft.Network**」のチェックボックスをオンにします。
+1. **[次へ: クォータ >]** をクリックします。
+1. 「**新しいプラン**」ブレードの「**クォータ**」タブで、次のように設定を行います。
 
-    - Microsoft.Compute: **기본 할당량**
-    - Microsoft.Network: **기본 할당량**
-    - Microsoft.Storage: **기본 할당량**
+    - Microsoft.Compute:**既定のクォータ**
+    - Microsoft.Network:**既定のクォータ**
+    - Microsoft.Storage:**既定のクォータ**
 
-1. **검토 + 만들기**와 **만들기**를 차례로 클릭합니다.
+1. **[Review + create]\(レビュー + 作成\)** をクリックし、 **[作成]** をクリックします。
 
-    >**참고**: 배포가 완료될 때까지 기다립니다. 몇 초면 끝납니다.
+    >**注**: デプロイが完了するまで待ちます。 通常は数秒で完了します。
 
-1. **AzS-HOST1**에 연결된 원격 데스크톱 세션 내의 Azure Stack Hub 관리자 포털이 표시된 웹 브라우저 창에서 새로 만들기 블레이드로 돌아와서 **제안**을 클릭합니다.
-1. **새 제안 만들기** 블레이드의 **기본** 탭에서 다음 설정을 지정합니다.
+1. **AzS-HOST1** へのリモート デスクトップ セッション内で、Web ブラウザーの画面に Azure Stack Hub 管理者ポータルが表示されている状態で、「**新規作成**」ブレードに戻って「**オファー**」クリックします。
+1. 「**新しいオファーの作成**」ブレードの「**基本**」タブで、次のように設定を行います。
 
-    - 표시 이름: **sql-server-hosting-offer1**
-    - 리소스 이름: **sql-server-hosting-offer1**
-    - 리소스 그룹: **sql-server-hosting-offers-RG**
-    - 이 제안을 공개로 설정: **아니요**
+    - 表示名: **sql-server-hosting-offer1**
+    - リソース名: **sql-server-hosting-offer1**
+    - リソース グループ: **sql-server-hosting-offers-RG**
+    - このオファーをパブリックに設定する:"**いいえ**"
 
-1. **다음: 기본 요금제 >** 를 클릭합니다. 
-1. **새 제안 만들기** 블레이드의 **기본 요금제** 탭에서 **sql-server-hosting-plan1** 항목 옆의 체크박스를 선택합니다.
-1. **다음: 추가 요금제 >** 를 클릭합니다.
-1. **추가 요금제** 설정은 기본값으로 유지하고 **검토 + 만들기**를 클릭한 다음 **만들기**를 클릭합니다.
+1. **[次へ: 基本プラン >]** をクリックします。 
+1. 「**新しいオファーの作成**」ブレードの「**基本プラン**」タブで、「**sql-server-hosting-plan1**」エントリの横にあるチェックボックスをオンにします。
+1. **[次へ: アドオン プラン >]** をクリックします。
+1. 「**アドオン プラン**」の設定は既定値にしたまま、「**確認して作成**」をクリックしてから「**作成**」をクリックします。
 
-    >**참고**: 배포가 완료될 때까지 기다립니다. 몇 초면 끝납니다.
+    >**注**: デプロイが完了するまで待ちます。 通常は数秒で完了します。
 
-1. **AzS-HOST1**에 연결된 원격 데스크톱 세션 내의 Azure Stack Hub 관리자 포털이 표시된 웹 브라우저 창에서 **새로 만들기** 블레이드로 돌아와서 **구독**을 클릭합니다.
-1. **사용자 구독 만들기** 블레이드에서 다음 설정을 지정하고 **만들기**를 클릭합니다.
+1. **AzS-HOST1** へのリモート デスクトップ セッション内で、Web ブラウザー ウィンドウに Azure Stack Hub 管理者ポータルが表示されている状態で、 **[新規作成]** ブレードに戻り、 **[オファー + プラン]** セクションで **[サブスクリプション]** をクリックします。
+1. 「**ユーザー サブスクリプションの作成**」ブレードで、次のように設定してから「**作成**」を選択します。
 
-    - 이름: **sql-server-hosting-subscription1**
-    - 사용자: **cloudadmin@azurestack.local**
-    - 디렉터리 테넌트: **ADFS.azurestack.local**
-    - 제안 이름: **sql-server-hosting-offer1**
+    - 名前: **sql-server-hosting-subscription1**
+    - ユーザー: **cloudadmin@azurestack.local**
+    - ディレクトリ テナント:**ADFS.azurestack.local**
+    - オファー名: **sql-server-hosting-offer1**
 
-    >**참고**: 배포가 완료될 때까지 기다립니다. 몇 초면 끝납니다.
+    >**注**: デプロイが完了するまで待ちます。 通常は数秒で完了します。
 
-1. Azure Stack Hub 관리자 포털 창은 열어 둡니다.
+1. Azure Stack Hub 管理者ポータルのウィンドウは開いたままにします。
 
 
-#### 작업 2: SQL Server 호스팅 서버로 사용할 Azure Stack Hub VM 배포(클라우드 운영자 역할)
+#### <a name="task-2-deploy-an-azure-stack-hub-vm-that-will-become-a-sql-server-hosting-server-as-a-cloud-operator"></a>タスク 2:(クラウド オペレーターとして) SQL Server ホスティング サーバーの役割を担う Azure Stack Hub VM をデプロイする
 
-이 작업에서는 다음을 수행합니다.
+このタスクでは次のことを行います。
 
-- SQL Server 호스팅 서버로 사용할 Azure Stack Hub VM 배포(클라우드 운영자 역할)
+- (クラウド オペレーターとして) SQL Server ホスティング サーバーの役割を担う Azure Stack Hub VM をデプロイする
 
-    >**참고**: 청구 가능한 사용자 구독에서 SQL Server 호스팅 서버로 작동하는 Azure Stack Hub VM을 만들어야 합니다.
+    >**注**:請求可能なユーザー サブスクリプションに、SQL Server ホスティング サーバーとして機能する Azure Stack Hub VM を作成する必要があります。
 
-1. **AzS-HOST1**에 연결된 원격 데스크톱 세션 내에서 [Azure Stack Hub 테넌트 포털](https://portal.local.azurestack.external/)이 표시된 웹 브라우저 창으로 전환합니다.
-1. Azure Stack Hub 테넌트 포털의 허브 메뉴에서 **리소스 만들기**를 클릭합니다.
-1. 새로 만들기 블레이드에서 컴퓨팅을 선택하고 사용 가능한 리소스 종류 목록에서 **{WS-BYOL} 무료 SQL Server 라이선스: Windows Server 2016의 SQL Server 2017 Express**를 선택합니다.
-1. **가상 머신 만들기** 블레이드의 **기본 내용** 창에서 다음 설정을 지정하고 **확인**을 클릭합니다(나머지는 기본값을 그대로 유지).
+1. **AzS-HOST1** へのリモート デスクトップ セッション内で、[Azure Stack Hub テナント ポータル](https://portal.local.azurestack.external/)が表示されている Web ブラウザーの画面に切り替えます。
+1. Azure Stack Hub テナント ポータルのハブ メニューで、「**リソースの作成**」をクリックします。
+1. **[新規作成]** ブレードで **[コンピューティング]** を選択し、利用可能なリソースの種類の一覧で **{WS-BYOL} 無料の SQL Server ライセンス:Windows Server 2016 上の SQL Server 2017 Express** を選択します。
+1. 「**仮想マシンの作成**」ブレードの「**基本**」ペインで、次のように設定してから「**OK**」をクリックします (他の設定は規定値のままにします)。
 
-    - 이름: **sql-host-vm0**
-    - VM 디스크 유형: **프리미엄 SSD**
-    - 사용자 이름: **sqladmin**
-    - 암호: **Pa55w.rd**
-    - 구독: **sql-server-hosting-subscription1**
-    - 리소스 그룹: 새 리소스 그룹 **sql-server-hosting-RG**의 이름.
-    - 위치: **로컬**
+    - 名前: **sql-host-vm0**
+    - VM ディスクの種類:**Premium SSD**
+    - ユーザー名: **sqladmin**
+    - パスワード: **Pa55w.rd1234**
+    - サブスクリプション: **sql-server-hosting-subscription1**
+    - リソース グループ: 新しいリソース グループの名前 **sql-server-hosting-RG**
+    - 場所: **ローカル**
 
-1. **크기 선택** 블레이드에서 **DS1_v2**를 선택하고 **선택**을 클릭합니다.
-1. **가상 머신 만들기** 블레이드의 **설정** 창에서 **네트워크 보안 그룹** 설정을 **고급**으로 지정하고 **네트워크 보안 그룹(방화벽)** 을 클릭합니다.
-1. **네트워크 보안 그룹 만들기** 블레이드에서 **+ 인바운드 규칙 추가**를 클릭합니다.
-1. **인바운드 보안 규칙 추가** 블레이드에서 다음 설정을 지정하고 **추가**를 클릭합니다(나머지는 기본값을 그대로 유지).
+1. 「**サイズの選択**」ブレードで、「**DS1_v2**」を選択してから「**選択**」をクリックします。
+1. 「**仮想マシンの作成**」ブレードの「**設定**」ペインで、「**ネットワーク セキュリティ グループ**」を「**詳細**」に設定してから、「**ネットワーク セキュリティ グループ (ファイアウォール)** 」をクリックします。
+1. 「**ネットワーク セキュリティ グループの作成**」ブレードで、「 **+ 受信規則の追加**」をクリックします。
+1. 「**受信セキュリティ規則の追加**」ブレードで次のように設定してから「**追加**」を選択します (他の設定は既定値のままにします)。
 
-    - 대상 포트 범위: **1433**
-    - 프로토콜: **TCP**
-    - 작업: **허용**
-    - 이름: **SQL**
+    - 宛先ポート範囲:**1433**
+    - プロトコル: **TCP**
+    - アクション: **許可**
+    - 名前: **SQL**
 
-1. **네트워크 보안 그룹 만들기** 블레이드로 돌아와서 **확인**을 클릭합니다.
-1. **가상 머신 만들기** 블레이드의 **설정** 창으로 돌아와서 다음 설정을 지정하고 **확인**을 클릭합니다(나머지는 기본값을 그대로 유지).
+1. 「**ネットワーク セキュリティ グループの作成**」ブレードに戻って「**OK**」をクリックします。
+1. 「**仮想マシンの作成**」ブレードの「**設定**」タブに戻り、次のように設定してから「**OK**」をクリックします (他の設定は規定値のままにします)。
 
-    - 부팅 진단: 사용 안 함
-    - 게스트 OS 진단: 사용 안 함
+    - ブート診断:Disabled (無効)
+    - ゲスト OS の診断:Disabled (無効)
 
-1. **가상 머신 만들기** 블레이드의 **SQL Server 설정** 창에서 다음 설정을 지정하고 **확인**을 클릭합니다(나머지는 기본값을 그대로 유지).
+1. 「**仮想マシンの作成**」ブレードの「**SQL Server の設定**」タブで、次のように設定してから「**OK**」をクリックします (他の設定は規定値のままにします)。
 
-    - SQL 연결: **공용(인터넷)**
-    - 포트: **1433**
-    - SQL 인증: **사용**
-    - 로그인 이름: **SQLAdmin**
-    - 암호: **Pa55w.rd**
-    - 스토리지 구성: **일반**
-    - 자동화된 패치: **사용 안 함**
-    - 자동화된 백업: **사용 안 함**
-    - Azure Key Vault 통합: **사용 안 함**
+    - SQL への接続:**パブリック (インターネット)**
+    - ポート:**1433**
+    - SQL 認証:**有効にする**
+    - ログイン名:**SQLAdmin**
+    - パスワード: **Pa55w.rd**
+    - ストレージの構成:**全般**
+    - 自動修正:**無効化**
+    - 自動バックアップ:**無効化**
+    - Azure Key Vault の統合:**無効化**
 
-1. **가상 머신 만들기** 블레이드의 **요약** 창에서 **확인**을 클릭합니다.
+1. 「**仮想マシンの作成**」ブレードの「**概要**」ペインで、「**OK**」をクリックします。
 
-    >**참고**: 배포가 완료될 때까지 기다립니다. 20분 정도 걸릴 수 있습니다.
+    >**注**: デプロイが完了するまで待ちます。 20 分ほどかかる場合があります。
 
-1. 배포가 완료되면 **sql-host-vm0** 가상 머신 블레이드로 이동하여 **개요** 섹션의 **DNS 이름** 레이블 바로 아래에 있는 **구성**을 클릭합니다.
-1. **sql-host-vm0-ip \| 구성** 블레이드의 **DNS 이름 레이블(옵션)** 텍스트 상자에 **sql-host-vm0**을 입력하고 **저장**을 클릭합니다.
+1. デプロイが完了したら、**sql-host-vm0** 仮想マシン ブレードに移動し、 **[概要]** セクションの **[DNS 名]** ラベルの真下にある **[構成]** をクリックします。
+1. **[sql-host-vm0-ip \| 構成]** ブレードの **[DNS 名ラベル (オプション)]** テキスト ボックスに、「**sql-host-vm0**」と入力して **[保存]** をクリックします。
 
-    >**참고**: 이렇게 하면 **sql-host-vm0.local.cloudapp.azurestack.external** DNS 이름을 통해 **sql-host-vm0**을 사용할 수 있게 됩니다.
+    >**注**:これにより、「**sql-host-vm0.local.cloudapp.azurestack.external**」DNS 名を介して「**sql-host-vm0**」が利用できるようになります。
 
-1. **sql-host-vm0-ip \| 구성** 블레이드에서 **할당** 옵션을 **정적**으로 설정하고 **저장**을 클릭합니다.
+1. **[sql-host-vm0-ip \| 構成]** ブレードで、 **[割り当て]** オプションを **[静的]** に設定して **[保存]** をクリックします。
 
-    >**참고**: 이렇게 하면 **sql-host-vm0** 가상 머신 다시 시작이 트리거됩니다.
+    >**注**:これにより、「**sql-host-vm0**」仮想マシンの再起動がトリガーされます。
 
 
-#### 작업 3: SQL 호스팅 서버 추가(클라우드 운영자 역할)
+#### <a name="task-3-add-a-sql-hosting-server-as-a-cloud-operator"></a>タスク 3:(クラウド オペレーターとして) SQL ホスティング サーバーを追加する
 
-이 작업에서는 다음을 수행합니다.
+このタスクでは次のことを行います。
 
-- SQL 호스팅 서버 추가(클라우드 운영자 역할)
+- (クラウド オペレーターとして) SQL ホスティング サーバーを追加する
 
-1. **AzSHOST-1**에 연결된 원격 데스크톱 세션 내의 Azure Stack 관리자 포털이 표시된 웹 브라우저에서 **모든 서비스**를 클릭하고 **관리 리소스** 섹션에서 **SQL 호스팅 서버**를 클릭합니다.
+1. **AzSHOST-1** へのリモート デスクトップ セッション内で、Web ブラウザーに Azure Stack 管理者ポータルが表示されている状態で「**すべてのサービス**」をクリックし、「**管理リソース**」セクションで「**SQL ホスティング サーバー**」をクリックします。
 
-    > **참고:** Azure Stack 관리자 포털이 표시된 브라우저 페이지를 새로 고쳐야 **SQL 호스팅 서버** 리소스 종류가 표시될 수도 있습니다.
+    > **注:**  **SQL Hosting Servers** リソースの種類を表示させるには、Azure Stack 管理者ポータルが表示されているブラウザー ページを更新する必要があります。
 
-1. **SQL 호스팅 서버** 블레이드에서 **+ 추가**를 클릭합니다.
-1. **SQL 호스팅 서버 추가** 블레이드에서 다음 설정을 지정합니다.
+1. 「**SQL ホスティング サーバー**」ブレードで「 **+ 追加**」をクリックします。
+1. 「**SQL ホスティング サーバーの追加**」ブレードで、次のように設定を行います。
 
-    - SQL Server 이름: **sql-host-vm0.local.cloudapp.azurestack.external**
-    - 사용자 이름: **sqladmin**
-    - 암호: **Pa55w.rd**
-    - 호스팅 서버 크기(GB): **50**
-    - Always On 가용성 그룹: 선택 취소
-    - 구독: **기본 공급자 구독**
-    - 리소스 그룹: 새 리소스 그룹 **sql.resources-RG**의 이름.
-    - 위치: **로컬**
+    - SQL サーバー名: **sql-host-vm0.local.cloudapp.azurestack.external**
+    - ユーザー名: **sqladmin**
+    - パスワード: **Pa55w.rd1234**
+    - ホスティング サーバーのサイズ (GB):**50**
+    - 常時接続可用性グループ: オフ
+    - [サブスクリプション]:**既定のプロバイダー サブスクリプション**
+    - リソース グループ: 新しいリソース グループの名前 **sql.resources-RG**
+    - 場所: **ローカル**
 
-1. **SQL 호스팅 서버 추가** 블레이드에서 **SKU**를 클릭하고 **SKU** 블레이드에서 **새 SKU 만들기**를 클릭한 후에 **SKU 만들기** 블레이드에서 다음 설정을 지정합니다.
+1. 「**SQL ホスティング サーバーの追加**」ブレードで「**SKU**」をクリックし、「**SKU**」ブレードで「**新しい SKU の作成**」をクリックしてから、「**SKU の作成**」ブレードで以下のように設定を行います。
 
-    - 이름: **MSSQL2017Exp**
-    - 제품군: **SQL Server 2017**
-    - 계층: **독립 실행형**
-    - 버전: **Express**
+    - 名前: **MSSQL2017Exp**
+    - ファミリ:**SQL Server 2017**
+    - サービス レベル:**スタンドアロン**
+    - エディション:**Express**
 
-1. **SKU 만들기** 블레이드에서 **확인**을 클릭하고 **SQL 호스팅 서버 추가** 블레이드로 돌아와서 **만들기**를 클릭합니다.
+1. 「**SKU の作成**」ブレードで「**OK**」をクリックし、「**SQL ホスティング サーバー**」ブレードに戻って「**作成**」をクリックします。
 
-    > **참고:** 작업이 완료될 때까지 기다립니다. 1분도 걸리지 않습니다.
+    > **注:**  操作が完了するまで待ちます。 これにかかる時間は 1 分未満です。
 
-1. **SQL 호스팅 서버** 블레이드에서 **새로 고침**을 클릭하고 서버 목록에 **sqlhost1.local.cloudapp.azurestack.external**이 표시되는지 확인합니다.
+1. 「**SQL ホスティング サーバー**」ブレードで「**更新**」をクリックし、サーバーの一覧に「**sqlhost1.local.cloudapp.azurestack.external**」が表示されていることを確認します。
 
 
-#### 작업 4: 사용자에게 SQL 데이터베이스 제공(클라우드 운영자 역할)
+#### <a name="task-4-make-sql-databases-available-to-users-as-a-cloud-operator"></a>タスク 4:(クラウド オペレーターとして) ユーザーが SQL データベースを使用できるようにする
 
-이 작업에서는 다음을 수행합니다.
+このタスクでは次のことを行います。
 
-- 사용자에게 SQL 데이터베이스 제공(클라우드 운영자 역할)
+- (クラウド オペレーターとして) ユーザーが SQL データベースを使用できるようにする
 
-1. **AzS-HOST1**에 연결된 원격 데스크톱 세션 내의 Azure Stack Hub 관리자 포털이 표시된 웹 브라우저 창에서 **+ 리소스 만들기**를 클릭합니다.
-1. **새로 만들기** 블레이드에서 **제안+요금제**를 클릭한 다음 **요금제**를 클릭합니다.
-1. **새 요금제** 블레이드의 **기본** 탭에서 다음 설정을 지정합니다.
+1. **AzS-HOST1** へのリモート デスクトップ セッション内で、Web ブラウザーの画面に Azure Stack Hub 管理者ポータルが表示されている状態で、「 **+ リソースの作成**」をクリックします。
+1. 「**新規作成**」ブレードで、「**オファーとプラン**」をクリックしてから「**プラン**」をクリックします。
+1. 「**新しいプラン**」ブレードの「**基本**」タブで、次のように設定を行います。
 
-    - 표시 이름: **sql-server-2017-express-db-plan1**
-    - 리소스 이름: **sql-server-2017-express-db-plan1**
-    - 리소스 그룹: 새 리소스 그룹 **sqldb-plans-RG**의 이름.
+    - 表示名: **sql-server-2017-express-db-plan1**
+    - リソース名: **sql-server-2017-express-db-plan1**
+    - リソース グループ: 新しいリソース グループの名前 **sqldb-plans-RG**
 
-1. **다음: 서비스 >** 를 클릭합니다.
-1. **새 요금제** 블레이드의 **서비스** 탭에서 **Microsoft.SQLAdapter** 체크박스를 선택합니다.
-1. **다음: 할당량>** 을 클릭합니다.
-1. **새 요금제** 블레이드의 **할당량** 탭에서 **Microsoft.SQLAdapter** 항목 옆의 **새로 만들기**를 클릭합니다.
-1. **할당량 만들기** 블레이드에서 다음 설정을 지정하고 **만들기**를 클릭합니다.
+1. **[次へ: サービス >]** をクリックします。
+1. 「**新しいプラン**」ブレードの「**サービス**」タブで、「**Microsoft.SQLAdapter**」チェックボックスをオンにします。
+1. **[次へ: クォータ >]** をクリックします。
+1. 「**新しいプラン**」ブレードの「**クォータ**」タブで、「**Microsoft.SQLAdapter**」エントリの横にある「**新規作成**」をクリックします。
+1. * *[クォータの作成]* ブレードで、次のように設定してから **[作成]** をクリックします。
 
-    - 할당량 이름: **sql-server-2017-express-db-quota1**
-    - 모든 데이터베이스의 최대 크기(GB): **2**
-    - 최대 데이터베이스 수: **20**
+    - クォータ名: **sql-server-2017-express-db-quota1**
+    - データベースの最大サイズ (GB):**2**
+    - データベースの最大数:**20**
 
-1. **검토 + 만들기**와 **만들기**를 차례로 클릭합니다.
+1. **[Review + create]\(レビュー + 作成\)** をクリックし、 **[作成]** をクリックします。
 
-    >**참고**: 배포가 완료될 때까지 기다립니다. 몇 초면 끝납니다.
+    >**注**: デプロイが完了するまで待ちます。 通常は数秒で完了します。
 
-1. **AzS-HOST1**에 연결된 원격 데스크톱 세션 내의 Azure Stack Hub 관리자 포털이 표시된 웹 브라우저 창에서 **새로 만들기** 블레이드로 돌아와서 **제안**을 클릭합니다.
-1. **새 제안 만들기** 블레이드의 **기본** 탭에서 다음 설정을 지정합니다.
+1. **AzS-HOST1** へのリモート デスクトップ セッション内で、Web ブラウザーの画面に Azure Stack Hub 管理者ポータルが表示されている状態で、「**新規作成**」ブレードに戻って「**オファー**」クリックします。
+1. 「**新しいオファーの作成**」ブレードの「**基本**」タブで、次のように設定を行います。
 
-    - 표시 이름: **sql-server-2017-express-db-offer1**
-    - 리소스 이름: **sql-server-2017-express-db-offer1**
-    - 리소스 그룹: **sqldb-offers-RG**
-    - 이 제안을 공개로 설정: **예**
+    - 表示名: **sql-server-2017-express-db-offer1**
+    - リソース名: **sql-server-2017-express-db-offer1**
+    - リソース グループ: **sqldb-offers-RG**
+    - このオファーをパブリックに設定する:**はい**
 
-1. **다음: 기본 요금제 >** 를 클릭합니다. 
-1. **새 제안 만들기** 블레이드의 **기본 요금제** 탭에서 **sql-server-2017-express-db-plan1** 항목 옆의 체크박스를 선택합니다.
-1. **다음: 추가 요금제 >** 를 클릭합니다.
-1. **추가 요금제** 설정은 기본값으로 유지하고 **검토 + 만들기**를 클릭한 다음 **만들기**를 클릭합니다.
+1. **[次へ: 基本プラン >]** をクリックします。 
+1. 「**新しいオファーの作成**」ブレードの「**基本プラン**」タブで、「**sql-server-2017-express-db-plan1**」エントリの横にあるチェックボックスをオンにします。
+1. **[次へ: アドオン プラン >]** をクリックします。
+1. 「**アドオン プラン**」の設定は既定値にしたまま、「**確認して作成**」をクリックしてから「**作成**」をクリックします。
 
-    >**참고**: 배포가 완료될 때까지 기다립니다. 몇 초면 끝납니다.
+    >**注**: デプロイが完了するまで待ちます。 通常は数秒で完了します。
 
 
-#### 작업 5: SQL 데이터베이스 만들기(사용자 역할)
+#### <a name="task-5-crate-a-sql-database-as-a-user"></a>タスク 5:(ユーザーとして) SQL データベースを作成する
 
-이 작업에서는 다음을 수행합니다.
+このタスクでは次のことを行います。
 
-- 테스트 사용자 계정 만들기
-- 새로 만든 사용자 계정을 사용하여 SQL 데이터베이스 만들기
+- テスト用のユーザー アカウントを作成する
+- 新たに作成されたユーザー アカウントを使用して SQL データベースを作成する
 
-1. **AzS-HOST1**에 연결된 원격 데스크톱 세션 내에서 **시작**을 클릭하고 시작 메뉴에서 **Windows 관리 도구**를 클릭합니다. 그런 다음 관리 도구 목록에서 **Active Directory 관리 센터**를 두 번 클릭합니다.
-1. **Active Directory 관리 센터** 콘솔에서 **azurestack(로컬)** 을 클릭합니다.
-1. 세부 정보 창에서 **사용자** 컨테이너를 두 번 클릭합니다.
-1. **작업** 창의 **사용자** 섹션에서 **새로 만들기 -> 사용자**를 클릭합니다.
-1. **사용자 만들기** 창에서 다음 설정을 지정하고 **확인**을 클릭합니다. 
+1. **AzS-HOST1** へのリモート デスクトップ セッション内でスタート メニューから「**スタート**」をクリックし、「**Windows 管理ツール**」をクリックしてから、管理ツールの一覧で「**Active Directory 管理センター**」をダブルクリックします。
+1. 「**Active Directory 管理センター**」コンソールで「**azurestack (ローカル)** 」をクリックします。
+1. 詳細ペインで「**ユーザー**」コンテナーをダブルクリックします。
+1. 「**タスク**」ペインの「**ユーザー**」セクションで、 **「新規作成」>「ユーザー」** の順にクリックします。
+1. 「**ユーザーの作成**」ウィンドウで、次のように設定してから「**OK**」をクリックします。 
 
-    - 전체 이름: **T1U1**
-    - 사용자 UPN 로그온: **t1u1@azurestack.local**
-    - 사용자 SamAccountName: **azurestack\t1u1**
-    - 암호: **Pa55w.rd**
-    - 암호 옵션: **기타 암호 옵션 -> 암호 사용 기간 제한 없음**
+    - 完全名:**T1U1**
+    - ユーザー UPN ログオン: **t1u1@azurestack.local**
+    - ユーザー SamAccountName: **azurestack\t1u1**
+    - パスワード: **Pa55w.rd**
+    - パスワード オプション: **[その他のパスワード オプション] -> [パスワードを無期限にする]**
 
-1. **AzS-HOST1**에 연결된 원격 데스크톱 세션 내에서 웹 브라우저의 InPrivate 세션을 시작합니다.
-1. 웹 브라우저 창에서 [Azure Stack Hub 사용자 포털](https://portal.local.azurestack.external)로 이동하여 **Pa55w.rd** 암호를 사용해 **t1u1@azurestack.local**로 로그인합니다.
-1. Azure Stack Hub 사용자 포털의 대시보드에서 **구독 가져오기** 타일을 클릭합니다.
-1. **구독 가져오기** 블레이드의 **이름** 텍스트 상자에 **t1u1-sqldb-subscription1**을 입력합니다.
-1. 제안 목록에서 **sql-server-2017-express-db-offer1**을 선택하고 **만들기**를 클릭합니다.
-1. **구독이 생성되었습니다. 구독을 사용해서 시작하려면 포털을 새로 고쳐야 합니다.** 메시지가 표시되면 **새로 고침**을 클릭합니다. 
-1. Azure Stack Hub 테넌트 포털의 허브 메뉴에서 **모든 서비스**를 클릭합니다.
-1. 서비스 목록에서 **SQL 데이터베이스**를 클릭합니다.
-1. **SQL 데이터베이스** 블레이드에서 **+ 추가**를 클릭합니다.
-1. **데이터베이스 만들기** 블레이드에서 다음 설정을 지정합니다.
+1. **AzS-HOST1** へのリモート デスクトップ セッション内で、Web ブラウザーの InPrivate セッションを開始します。
+1. Web ブラウザー ウィンドウで [Azure Stack Hub ユーザー ポータル](https://portal.local.azurestack.external)に移動し、 **t1u1@azurestack.local** とパスワード **Pa55w.rd** でサインインします。
+1. Azure Stack Hub ユーザー ポータルのダッシュボードで、「**サブスクリプションの取得**」タイルをクリックします。
+1. 「**サブスクリプションの取得**」ブレードの「**名前**」テキスト ボックスに「**t1u1-sqldb-subscription1**」と入力します。
+1. オファーの一覧で「**sql-server-2017-express-db-offer1**」を選択し、「**作成**」をクリックします。
+1. メッセージ "**サブスクリプションが作成されました。サブスクリプションの使用を開始するには、ポータルを更新する必要があります**" が表示されたら、 **[最新の情報に更新]** をクリックします。 
+1. Azure Stack Hub テナント パネルのハブ メニューで、「**すべてのサービス**」をクリックします。
+1. サービスの一覧で「**SQL データベース**」をクリックします。
+1. 「**SQL データベース**」ブレードで「 **+ 追加**」をクリックします。
+1. 「**データベースの作成**」ブレードで、次のように設定を行います。
 
-    - 데이터베이스 이름: **sqldb1**
-    - 데이터 정렬: **SQL_Latin1_General_CP1_CI_AS**
-    - 최대 크기(MB): **200**
-    - 구독: **t1u1-sqldb-subscription1**
-    - 리소스 그룹: 새 리소스 그룹 **sqldb-RG**의 이름.
-    - 위치: **로컬**
-    - SKU: **MSSQL2017Exp**
+    - データベース名: **sqldb1**
+    - 照合順序:**SQL_Latin1_General_CP1_CI_AS**
+    - 最大サイズ (MB):**200**
+    - サブスクリプション: **t1u1-sqldb-subscription1**
+    - リソース グループ: 新しいリソース グループの名前 **sqldb-RG**
+    - 場所: **ローカル**
+    - SKU:**MSSQL2017Exp**
 
-    >**참고**: 새로 만든 SKU를 테넌트 포털에서 사용하려면 잠시 기다려야 할 수도 있습니다.
+    >**注**:新たに作成した SKU がテナント ポータルで利用できるようになるまで、しばらく待たなければならない場合があります。
 
-1. **데이터베이스 만들기** 블레이드에서 **로그인**을 클릭합니다.
-1. **로그인 선택** 블레이드에서 **새 로그인 만들기**를 클릭합니다.
-1. **새 로그인** 블레이드에서 다음 설정을 지정하고 **확인**을 클릭합니다.
+1. 「**データベースの作成**」ブレードで「**ログイン**」をクリックします。
+1. 「**ログインの選択**」ブレードで「**新しいログインの作成**」をクリックします。
+1. 「**新しいログイン**」ブレードで、以下のように設定してから「**OK**」をクリックします。
 
-    - 데이터베이스 로그인: **dbAdmin**
-    - 암호: **Pa55w.rd**
+    - データベース ログイン: **dbAdmin**
+    - パスワード: **Pa55w.rd**
 
-1. **데이터베이스 만들기** 블레이드로 돌아와서 **만들기**를 클릭합니다.
+1. 「**データベースの作成**」ブレードに戻って「**作成**」をクリックします。
 
-    >**참고**: 배포가 완료될 때까지 기다립니다. 1분도 걸리지 않습니다. 
+>**注**: デプロイが完了するまで待ちます。 これに要する時間は 1 分未満です。 
 
->**검토**: 이 연습에서는 SQL Server 호스팅 서버를 Azure Stack Hub에 추가하고 테넌트에 제공했으며, 테넌트 사용자로 SQL 데이터베이스를 배포했습니다.
+>**レビュー**:この演習では、SQL Server ホスティング サーバーを Azure Stack Hub に追加し、これをテナントが利用できるよう設定したほか、SQL データベースをテナント ユーザーとしてデプロイしました。

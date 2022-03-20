@@ -1,309 +1,218 @@
 ---
 lab:
-    title: '랩: Azure Stack Hub에서 공용 IP 주소 관리'
-    module: '모듈 5: 인프라 관리'
+  title: ラボ:Azure Stack Hub でパブリック IP アドレスを管理する
+  module: 'Module 5: Manage Infrastructure'
+ms.openlocfilehash: fd9c6f35024c4753fe27d86cef8fd47dd48764f3
+ms.sourcegitcommit: fd0b6231a00e8c86b46d914b2b6c4d984bc19902
+ms.translationtype: HT
+ms.contentlocale: ja-JP
+ms.lasthandoff: 03/02/2022
+ms.locfileid: "139256868"
 ---
+# <a name="lab---manage-public-ip-addresses-in-azure-stack-hub"></a>ラボ - Azure Stack Hub でパブリック IP アドレスを管理する
+# <a name="student-lab-manual"></a>受講生用ラボ マニュアル
 
-# 랩 - Azure Stack Hub에서 공용 IP 주소 관리
-# 학생 랩 매뉴얼
+## <a name="lab-dependencies"></a>ラボの依存関係
 
-## 랩 종속성
+- なし
 
-- 없음
+## <a name="estimated-time"></a>推定所要時間
 
-## 예상 소요 시간
+30 分
 
-30분
+## <a name="lab-scenario"></a>ラボのシナリオ
 
-## 랩 시나리오
+あなたは Azure Stack Hub 環境のオペレーターとして、 パブリック IP アドレス リソースを管理する必要があります。 
 
-여러분은 Azure Stack Hub 환경의 운영자입니다. 공용 IP 주소 리소스를 관리해야 합니다. 
+## <a name="objectives"></a>目標
 
-## 목표
+このラボを完了すると、次のことができるようになります。
 
-이 랩을 완료하면 다음을 수행할 수 있습니다.
+- パブリック IP アドレス リソースを管理する
 
-- 공용 IP 주소 리소스 관리
+## <a name="lab-environment"></a>ラボ環境
 
-## 랩 환경
+このラボでは、Active Directory フェデレーション サービス (AD FS) (ID プロバイダーとしてバックアップされた Active Directory) に統合された ADSK インスタンスを使用します。 
 
-이 랩에서는 AD FS(Active Directory Federation Services)와 통합된 ASDK 인스턴스(ID 공급자로 백업된 Active Directory)를 사용합니다. 
+ラボ環境は、次のコンポーネントから構成されています。
 
-랩 환경에는 다음과 같은 구성 요소가 포함됩니다.
+- 次のアクセス ポイントを持つ、**AzS-HOST1** サーバーで実行されている ASDK デプロイ。
 
-- 다음 액세스 지점을 사용하여 **AzS-HOST1** 서버에서 실행되는 ASDK 배포:
+  - 管理者ポータル: https://adminportal.local.azurestack.external
+  - 管理者の ARM エンドポイント: https://adminmanagement.local.azurestack.external
+  - ユーザー ポータル: https://portal.local.azurestack.external
+  - ユーザーの ARM エンドポイント: https://management.local.azurestack.external
 
-  - 관리자 포털: https://adminportal.local.azurestack.external
-  - 관리자 ARM 엔드포인트: https://adminmanagement.local.azurestack.external
-  - 사용자 포털: https://portal.local.azurestack.external
-  - 사용자 ARM 엔드포인트: https://management.local.azurestack.external
+- 管理ユーザー:
 
-- 관리자:
+  - ASDK クラウド オペレーターのユーザー名: **CloudAdmin@azurestack.local**
+  - ASDK クラウド オペレーターのパスワード:**Pa55w.rd1234**
+  - ASDK ホスト管理者のユーザー名: **AzureStackAdmin@azurestack.local**
+  - ASDK ホスト管理者のパスワード:**Pa55w.rd1234**
 
-  - ASDK 클라우드 운영자 사용자 이름: **CloudAdmin@azurestack.local**
-  - ASDK 클라우드 운영자 암호: **Pa55w.rd1234**
-  - ASDK 호스트 관리자 사용자 이름: **AzureStackAdmin@azurestack.local**
-  - ASDK 호스트 관리자 암호: **Pa55w.rd1234**
+このラボでは、PowerShell を介して Azure Stack Hub を管理するために必要なソフトウェアをインストールします。 追加のユーザー アカウントも作成します。
 
-이 랩을 진행하면서 PowerShell을 통해 Azure Stack Hub를 관리하는 데 필요한 소프트웨어를 설치합니다. 그리고 사용자 계정을 추가로 만듭니다.
+## <a name="instructions"></a>Instructions
 
-## 지침
+### <a name="exercise-1-create-an-offer-as-a-cloud-operator"></a>演習 1:(クラウド オペレーターとして) オファーを作成する
 
-### 연습 0: 랩 준비
+この演習では、クラウド オペレーターの役を担います。 最初に、パブリック IP アドレスの使用状況を確認してから、ネットワーク サービスが含まれるプランを作成した後、このプランが含まれるオファーを作成します。 続いて、オファーをパブリックに設定することで、ユーザーがこのオファーに基づいてサブスクリプションを作成できるようにします。 演習は次のタスクで構成されています。
 
-이 연습에서는 이 랩에서 사용할 Active Directory 사용자 계정을 만듭니다.
+1. (クラウド オペレーターとして) パブリック IP アドレスの使用状況を確認する
+1. (クラウド オペレーターとして) ネットワーク サービスから構成されるプランを作成する
+1. (クラウド オペレーターとして) プランに基づいたオファーを作成し、このオファーをパブリックに設定する
 
-1. 사용자 계정 만들기(클라우드 운영자 역할)
 
-#### 작업 1: 사용자 계정 만들기(클라우드 운영자 역할)
+#### <a name="task-1-review-public-ip-address-usage-as-a-cloud-operator"></a>タスク 1:(クラウド オペレーターとして) パブリック IP アドレスの使用状況を確認する
 
-이 작업에서는 다음을 수행합니다.
+このタスクでは次のことを行います。
 
-- 사용자 계정 만들기(클라우드 운영자 역할)
+- (クラウド オペレーターとして) パブリック IP アドレスの使用状況を確認する
 
-1. 필요한 경우 다음 자격 증명을 사용하여 **AzS-HOST1**에 로그인합니다.
+1. **AzS-HOST1** へのリモート デスクトップ セッション内で、Web ブラウザー ウィンドウを開いて [Azure Stack Hub 管理者ポータル](https://adminportal.local.azurestack.external/)を表示し、CloudAdmin@azurestack.local としてサインインします。
+1. Azure Stack Hub 管理者ポータルの「**ダッシュボード**」ページで、「**リソース プロバイダー**」タイルの「**ネットワーク**」をクリックします。 
+1. 「**ネットワーク**」ブレードで、「**パブリック IP プールの使用量**］グラフと、使用中および未使用の IP アドレスの数を確認します。
 
-    - 사용자 이름: **AzureStackAdmin@azurestack.local**
-    - 암호: **Pa55w.rd1234**
+#### <a name="task-2-create-a-plan-consisting-of-the-network-services-as-a-cloud-operator"></a>タスク 2:(クラウド オペレーターとして) ネットワーク サービスから構成されるプランを作成する
 
-1. **AzS-HOST1**에 연결된 원격 데스크톱 세션 내에서 **시작**을 클릭하고 시작 메뉴에서 **Windows 관리 도구**를 클릭합니다. 그런 다음 관리 도구 목록에서 **Active Directory 관리 센터**를 두 번 클릭합니다.
-1. **Active Directory 관리 센터** 콘솔에서 **azurestack(로컬)** 을 클릭합니다.
-1. 세부 정보 창에서 **사용자** 컨테이너를 두 번 클릭합니다.
-1. **작업** 창의 **사용자** 섹션에서 **새로 만들기 -> 사용자**를 클릭합니다.
-1. **사용자 만들기** 창에서 다음 설정을 지정하고 **확인**을 클릭합니다. 
+このタスクでは次のことを行います。
 
-    - 전체 이름: **T1U1**
-    - 사용자 UPN 로그온: **t1u1@azurestack.local**
-    - 사용자 SamAccountName: **azurestack\t1u1**
-    - 암호: **Pa55w.rd**
-    - 암호 옵션: **기타 암호 옵션 -> 암호 사용 기간 제한 없음**
+- (クラウド オペレーターとして) ネットワーク サービスから構成されるプランを作成する
 
->**검토**: 이 연습에서는 이 랩에서 사용할 Active Directory 계정을 만들었습니다.
+1. Web ブラウザーの画面に Azure Stack Hub 管理者ポータルが表示されている状態で、「 **+ リソースの作成**」をクリックします。 
+1. 「**新規**」ブレードで「**オファーとプラン**」をクリックします。
+1. 「**オファーとプラン**」ブレードで「**プラン**」をクリックします
+1. 「**新しいプラン**」ブレードの「**基本**」タブで、次のように設定を行います。
 
+    - 表示名:**Network-plan1**
+    - リソース名: **network-plan1**
+    - リソース グループ: 新しいリソース グループの名前 **network-plans-RG**
 
-### 연습 1: 제안 만들기(클라우드 운영자 역할)
+1. **[次へ: サービス >]** をクリックします。
+1. 「**新しいプラン**」ブレードの「**サービス**」タブで、「**Microsoft.Network**」チェックボックスをオンにします。
+1. **[次へ: クォータ >]** をクリックします。
+1. 「**新しいプラン**」ブレードの「**クォータ**」タブで、「**新規作成**」チェックボックスをオンにします。
+1. 「**ネットワーク クォータの作成**」ブレードで、次のように設定してから「**OK**」をクリックします。
 
-이 연습에서는 클라우드 운영자 역할을 맡아 먼저 공용 IP 주소 사용량을 검토한 다음 네트워크 서비스가 포함된 요금제, 그리고 이 요금제가 포함된 제안을 만듭니다. 그런 다음 사용자가 해당 제안을 기준으로 구독을 만들 수 있도록 제안을 공개합니다. 이 연습에서는 다음 작업을 수행합니다.
+    - 名前: **Network-plan1-quota**
+    - 仮想ネットワーク:**2**
+    - 仮想ネットワーク ゲートウェイ:**2**
+    - Vetwork 接続:**2**
+    - パブリック IP:**20**
+    - NIC:**20**
+    - ロード バランサー:**5**
+    - ネットワーク セキュリティ グループ:**20**
 
-1. 공용 IP 주소 사용량 검토(클라우드 운영자 역할)
-1. 네트워크 서비스가 포함된 요금제 만들기(클라우드 운영자 역할)
-1. 요금제를 기준으로 제안을 만들고 공용으로 설정(클라우드 운영자 역할)
+1. **[Review + create]\(レビュー + 作成\)** をクリックし、 **[作成]** をクリックします。
 
+    >**注**: デプロイが完了するまで待ちます。 通常は数秒で完了します。
 
-#### 작업 1: 공용 IP 주소 사용량 검토(클라우드 운영자 역할)
 
-이 작업에서는 다음을 수행합니다.
+#### <a name="task-3-create-an-offer-based-on-the-plan-as-a-cloud-operator"></a>タスク 3:(クラウド オペレーターとして) プランに基づいたオファーを作成する
 
-- 공용 IP 주소 사용량 검토(클라우드 운영자 역할)
+このタスクでは次のことを行います。
 
-1. **AzS-HOST1**에 연결된 원격 데스크톱 세션 내에서 [Azure Stack Hub 관리자 포털](https://adminportal.local.azurestack.external/)이 표시된 웹 브라우저 창을 열고 CloudAdmin@azurestack.local로 로그인합니다.
-1. Azure Stack Hub 사용자 포털의 **대시보드** 페이지 **리소스 공급자** 타일에서 **네트워크**를 클릭합니다. 
-1. **네트워크** 블레이드에서 **공용 IP 풀 사용량** 그래프, 그리고 사용 중인 IP 주소 및 사용 가능한 IP 주소 수를 확인합니다.
+- (クラウド オペレーターとして) プランに基づいたオファーを作成する
 
-#### 작업 2: 네트워크 서비스가 포함된 요금제 만들기(클라우드 운영자 역할)
+1. Azure Stack Hub 管理者ポータルで「 **+ リソースの作成**」をクリックします。 
+1. 「**新規**」ブレードで「**オファーとプラン**」をクリックします。
+1. 「**オファーとプラン**」ブレードで「**オファー**」をクリックします
+1. 「**新しいオファーの作成**」ブレードの「**基本**」タブで、次のように設定を行います。
 
-이 작업에서는 다음을 수행합니다.
+    - 表示名:**Network-offer1**
+    - リソース名: **network-offer1**
+    - リソース グループ: **network-offers-RG** という名前の新しいリソース グループ
+    - このオファーをパブリックに設定する:**はい**
 
-- 네트워크 서비스가 포함된 요금제 만들기(클라우드 운영자 역할)
+1. **[次へ: 基本プラン >]** をクリックします。 
+1. 「**新しいオファーの作成**」ブレードの「**基本プラン**」タブで、「**Network-plan1**」エントリの横にあるチェックボックスをオンにします。
+1. **[次へ: アドオン プラン >]** をクリックします。
+1. 「**アドオン プラン**」の設定は既定値にしたまま、「**確認して作成**」をクリックしてから「**作成**」をクリックします。
 
-1. Azure Stack Hub 관리자 포털이 표시된 웹 브라우저 창에서 **+ 리소스 만들기**를 클릭합니다. 
-1. **새로 만들기** 블레이드에서 **제안+요금제**를 클릭합니다.
-1. **제안+요금제** 블레이드에서 **요금제**를 클릭합니다.
-1. **새 요금제** 블레이드의 **기본** 탭에서 다음 설정을 지정합니다.
+    >**注**: デプロイが完了するまで待ちます。 通常は数秒で完了します。
 
-    - 표시 이름: **Network-plan1**
-    - 리소스 이름: **network-plan1**
-    - 리소스 그룹: 새 리소스 그룹 **network-plans-RG**의 이름.
+>**レビュー**:この演習では、プランを作成し、そのプランに基づいてパブリック オファーを作成しました。
 
-1. **다음: 서비스 >** 를 클릭합니다.
-1. **새 요금제** 블레이드의 **서비스** 탭에서 **Microsoft.Network** 체크박스를 선택합니다.
-1. **다음: 할당량>** 을 클릭합니다.
-1. **새 요금제** 블레이드의 **할당량** 탭에서 **새로 만들기**를 선택합니다.
-1. **네트워크 할당량 만들기** 블레이드에서 다음 설정을 지정하고 **확인**을 클릭합니다.
 
-    - 이름: **Network-plan1-quota**
-    - 최대 가상 네트워크 수: **2**
-    - 최대 가상 네트워크 게이트웨이 수: **2**
-    - 최대 네트워크 연결 수: **2**
-    - 최대 공용 IP 수: **20**
-    - 최대 NIC 수: **20**
-    - 최대 부하 분산 장치 수: **5**
-    - 최대 네트워크 보안 그룹 수: **20**
+### <a name="exercise-2-create-public-ip-address-resources-as-a-user"></a>演習 2:(ユーザーとして) パブリック IP アドレス リソースを作成する
 
-1. **검토 + 만들기**와 **만들기**를 차례로 클릭합니다.
+この演習ではユーザーとして、最初の演習で作成したオファーにサインアップした後、新しいサブスクリプションを作成してから、このサブスクリプションのもとでパブリック IP アドレス リソースを作成します。 演習は次のタスクで構成されています。
 
-    >**참고**: 배포가 완료될 때까지 기다립니다. 몇 초면 끝납니다.
+1. (ユーザーとして) オファーにサインアップする
+1. (ユーザーとして) IP アドレス リソースを作成する
 
+#### <a name="task-1-sign-up-for-the-offer-as-a-user"></a>タスク 1:(ユーザーとして) オファーにサインアップする
 
-#### 작업 3: 요금제를 기준으로 제안 만들기(클라우드 운영자 역할)
+このタスクでは次のことを行います。
 
-이 작업에서는 다음을 수행합니다.
+- (ユーザーとして) オファーにサインアップする
 
-- 요금제를 기준으로 제안 만들기(클라우드 운영자 역할)
+1. 1. **AzS-HOST1** へのリモート デスクトップ セッション内で、Web ブラウザーの InPrivate セッションを開始します。
+1. Web ブラウザー ウィンドウで [Azure Stack Hub ユーザー ポータル](https://portal.local.azurestack.external)に移動し、 **t1u1@azurestack.local** とパスワード **Pa55w.rd** でサインインします。
+1. Azure Stack Hub ユーザー ポータルのダッシュボードで、「**サブスクリプションの取得**」をクリックします。
+1. **[サブスクリプションの取得]** ブレードの **[名前]** テキスト ボックスに、「**T1U1-network-subscription1**」と入力します。
+1. オファーの一覧で「**Network-offer1**」を選択し、「**作成**」をクリックします。
+1. メッセージ ボックス "**サブスクリプションが作成されました。サブスクリプションの使用を開始するには、ポータルを更新する必要があります**" で、 **[最新の情報に更新]** をクリックします。
 
-1. Azure Stack Hub 관리자 포털에서 **+ 리소스 만들기**를 클릭합니다. 
-1. **새로 만들기** 블레이드에서 **제안+요금제**를 클릭합니다.
-1. **제안+요금제** 블레이드에서 **제안**을 클릭합니다.
-1. **새 제안 만들기** 블레이드의 **기본** 탭에서 다음 설정을 지정합니다.
+#### <a name="task-2-create-a-public-ip-address-as-a-user"></a>タスク 2:(ユーザーとして) パブリック IP アドレスを作成する
 
-    - 표시 이름: **Network-offer1**
-    - 리소스 이름: **network-offer1**
-    - 리소스 그룹: 새 리소스 그룹 **network-offers-RG**
-    - 이 제안을 공개로 설정: **예**
+このタスクでは次のことを行います。
 
-1. **다음: 기본 요금제 >** 를 클릭합니다. 
-1. **새 제안 만들기** 블레이드의 **기본 요금제** 탭에서 **Network-plan1** 항목 옆의 체크박스를 선택합니다.
-1. **다음: 추가 요금제 >** 를 클릭합니다.
-1. **추가 요금제** 설정은 기본값으로 유지하고 **검토 + 만들기**를 클릭한 다음 **만들기**를 클릭합니다.
+- (ユーザーとして) Azure Stack Hub ユーザー ポータル を使用してパブリック IP アドレスを作成する
 
-    >**참고**: 배포가 완료될 때까지 기다립니다. 몇 초면 끝납니다.
+1. Azure Stack Hub ユーザー ポータルのダッシュボードで、 **[+ リソースの作成]** をクリックします。
+1. **[Marketplace]** ブレードで **[パブリック IP アドレス]** を選択し、 **[パブリック IP アドレス]** ブレードで **[作成]** を選択します。
+1. **[パブリック IP アドレスの作成]** ブレードで、次の設定を指定し、 **[作成]** を選択します (その他はすべて既定値のままにします)。
 
->**검토**: 이 연습에서는 요금제, 그리고 해당 요금제를 기반으로 하는 공용 제안을 만들었습니다.
+    - 名前: **t1-pip1**
+    - IP アドレスの割り当て:**動的**
+    - アイドル タイムアウト (分):**4**
+    - DNS 名ラベル: **t1-pip1**
+    - [サブスクリプション]:**T1U1-network-subscription1**
+    - リソース グループ: **publicIPs-RG** という名前の新規リソース グループ
+    - 場所: **ローカル**
 
+1. IP アドレス リソースがプロビジョニングされるまで待ちます。
 
-### 연습 2: 공용 IP 주소 리소스 만들기(사용자 역할)
+>**レビュー**:この演習では、ユーザーのサブスクリプションのもとでパブリック IP アドレス リソースを作成しました。
 
-이 연습에서는 사용자 역할을 맡아 첫 번째 연습에서 만든 제안에 등록하고 새 구독을 만든 다음 해당 구독에서 공용 IP 주소 리소스를 만듭니다. 이 연습에서는 다음 작업을 수행합니다.
+### <a name="exercise-3-manage-public-ip-address-usage-as-a-cloud-operator"></a>演習 3:(クラウド オペレーターとして) パブリック IP アドレスの使用状況を管理する
 
-1. 제안에 등록(사용자 역할)
-1. Azure Stack Hub 사용자 Azure Resource Manager 엔드포인트에 연결(사용자 역할)
-1. IP 주소 리소스 만들기(사용자 역할)
+この演習ではクラウド オペレーターとして、パブリック IP アドレスの使用状況を確認および管理します。 演習は次のタスクで構成されています。
 
-#### 작업 1: 제안에 등록(사용자 역할)
+1. パブリック IP アドレス リソースの使用状況を確認する
+2. パブリック IP アドレス プールを追加する
 
-이 작업에서는 다음을 수행합니다.
+#### <a name="task-1-review-public-ip-address-usage-as-a-cloud-operator"></a>タスク 1:(クラウド オペレーターとして) パブリック IP アドレスの使用状況を確認する
 
-- 제안에 등록(사용자 역할)
+このタスクでは次のことを行います。
 
-1. **AzS-HOST1**에 연결된 원격 데스크톱 세션 내에서 웹 브라우저의 InPrivate 세션을 시작합니다.
-1. 웹 브라우저 창에서 [Azure Stack Hub 사용자 포털](https://portal.local.azurestack.external)로 이동하여 **Pa55w.rd** 암호를 사용해 **t1u1@azurestack.local**로 로그인합니다.
-1. Azure Stack Hub 사용자 포털의 대시보드에서 **구독 가져오기**를 클릭합니다.
-1. **구독 가져오기** 블레이드의 **표시 이름** 텍스트 상자에 **T1U1-network-subscription1**을 입력합니다.
-1. 제안 목록에서 **Network-offer1**을 선택하고 **만들기**를 클릭합니다.
-1. **구독이 생성되었습니다. 구독을 사용해서 시작하려면 포털을 새로 고쳐야 합니다.** 메시지가 표시되면 **새로 고침**을 클릭합니다.
+- (クラウド オペレーターとして) パブリック IP アドレスの使用状況を確認する
 
+1. Azure Stack Hub 管理者ポータルが表示されている Web ブラウザー ウィンドウに切り替えます (ここでは CloudAdmin@azurestack.local としてサインインしています)。
+1. Azure Stack Hub 管理者ポータルのハブ メニューで「**ダッシュボード**」をクリックし、「**リソース プロバイダー**」タイルの「**ネットワーク**」をクリックします。
+1. 「**ネットワーク**」ブレードで、「**パブリック IP プールの使用量**］グラフと、使用中および未使用の IP アドレスの数を再度確認します。
 
-#### 작업 2: Azure Stack Hub Azure Resource Manager 사용자 엔드포인트에 연결(사용자 역할)
+    >**注**:ユーザー サブスクリプションのもとで (ユーザーとして) 追加のパブリック IP アドレスを作成したことで、数が変化しているはずです。
 
-이 작업에서는 다음을 수행합니다.
+#### <a name="task-2-add-a-public-ip-address-pool-as-a-cloud-operator"></a>タスク 2:(クラウド オペレーターとして) パブリック IP アドレス プールを追加する
 
-- Azure Stack Hub Azure Resource Manager 사용자 엔드포인트에 연결(사용자 역할)
+このタスクでは次のことを行います。
 
-1. **AzS-HOST1**에 연결된 원격 데스크톱 세션 내에서 관리자로 PowerShell 7을 시작합니다.
+- パブリック IP アドレス プールを追加する
 
-    >**참고**: Azure Stack Hub로의 PowerShell 연결을 설정하는 자세한 지침은 **PowerShell을 통해 Azure Stack Hub에 연결** 랩의 지침을 참조하세요.
+1. Web ブラウザーの画面に Azure Stack Hub 管理者ポータルが表示されている状態で、「**ネットワーク**」ブレードの「**パブリック IP プールの使用量**」タイルを選択します。
 
-1. **관리자: C:\Program Files\PowerShell\7\pwsh.exe** 프롬프트에서 다음 명령을 실행하여 이 랩에 필요한 Azure Stack Hub PowerShell 모듈을 설치합니다.
+    >**注**: **[パブリック IP プール]** ブレードに " **'スタートアップ' の排他的操作が進行中です。この操作の実行中は、ノードを追加する操作や IP プールを追加する操作は実行できません。ここをクリックしてアクティビティ ログを確認してください**" のメッセージが表示された場合は、'スタートアップ' 操作が完了するまで次の手順に進むことはできません。
 
-    ```powershell
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-    Install-Module -Name Az.BootStrapper -Force -AllowPrerelease -AllowClobber
-    Install-AzProfile -Profile 2019-03-01-hybrid -Force
-    Install-Module -Name AzureStack -RequiredVersion 2.0.2-preview -AllowPrerelease
-    ```
+1. 「**パブリック IP プール**」ブレードで「 **+ IP プールの追加**」をクリックします。 
+1. 「**IP プールの追加**」ブレードで、次のように設定してから「**追加**」をクリックします。
 
-    >**참고**: 이미 사용 가능한 명령 관련 오류 메시지는 무시하세요.
+    - 名前: **Public Pool 1**
+    - リージョン: **ローカル**
+    - アドレス範囲 (CIDR ブロック):**192.168.110.0/24**
 
-1. **관리자: C:\Program Files\PowerShell\7\pwsh.exe** 프롬프트에서 다음 명령을 실행하여 Azure Stack Hub 도구를 다운로드한 후 압축을 풉니다.
+1. 変更が適用されるまで待ってから、「**ネットワーク**」ブレードに戻ります。
+1. 「**パブリック IP プールの使用量**」グラフで、未使用の IP アドレスの数の変化を確認します。
 
-    ```powershell
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-    Set-Location -Path 'C:\'
-    Invoke-WebRequest https://github.com/Azure/AzureStack-Tools/archive/az.zip -OutFile az.zip
-    Expand-Archive az.zip -DestinationPath . -Force
-    Set-Location -Path '\AzureStack-Tools-az'
-    ```
-
-1. **관리자: C:\Program Files\PowerShell\7\pwsh.exe** 프롬프트에서 다음 명령을 실행하여 Azure Stack Hub 사용자 환경을 등록합니다.
-
-    ```powershell
-    Add-AzEnvironment -Name 'AzureStackUser' -ArmEndpoint 'https://management.local.azurestack.external'
-    ```
-
-1. **관리자: C:\Program Files\PowerShell\7\pwsh.exe** 프롬프트에서 다음 명령을 실행하여 브라우저 세션을 통해 **t1u1@azurestack.local** 사용자로 Azure Stack Hub 사용자 환경에 대한 인증을 시작합니다.
-
-    ```powershell
-    Connect-AzAccount -EnvironmentName 'AzureStackUser' -UseDeviceAuthentication
-    ```
-
-1. **관리자: C:\Program Files\PowerShell\7\pwsh.exe** 창에 표시되는 메시지를 검토합니다. 그런 후에 InPrivate 모드에서 다른 웹 브라우저 창을 열고 [adfs.local.azurestack.external](https://adfs.local.azurestack.external/adfs/oauth2/deviceauth) 페이지로 이동하여 검토한 메시지에 포함된 코드를 입력합니다. 메시지가 표시되면 **t1u1@azurestack.local** 사용자로 다시 로그인합니다.
-1. **관리자: C:\Program Files\PowerShell\7\pwsh.exe** 창으로 다시 전환하여 **t1u1@azurestack.local** 사용자로 정상 인증되었는지 확인합니다.
-
-
-#### 작업 3: IP 주소 리소스 만들기(사용자 역할)
-
-이 작업에서는 다음을 수행합니다.
-
-- IP 주소 리소스 만들기(사용자 역할)
-
-1. **관리자: C:\Program Files\PowerShell\7\pwsh.exe** 프롬프트에서 다음 명령을 실행하여 새로 프로비전한 구독을 사용 중인지 확인합니다. 
-
-    ```powershell
-    (Get-AzSubscription).Name
-    ```
-
-1. **관리자: C:\Program Files\PowerShell\7\pwsh.exe** 프롬프트에서 다음 명령을 실행하여 현재 구독 내에서 네트워크 리소스 공급자를 등록합니다.
-
-    ```powershell 
-    Register-AzResourceProvider -ProviderNamespace Microsoft.Network
-    ```
-
-    >**참고**: 리소스 공급자가 관리하는 리소스를 만들려면 해당 공급자를 등록해야 합니다.
-
-1. **관리자: C:\Program Files\PowerShell\7\pwsh.exe** 프롬프트에서 다음 명령을 실행하여 공용 IP 주소 리소스를 호스트할 리소스 그룹을 만듭니다.
-
-    ```powershell 
-    $rg = New-AzResourceGroup -Name publicIPs-RG -Location local
-    ```
-
-1. **관리자: C:\Program Files\PowerShell\7\pwsh.exe** 프롬프트에서 다음 명령을 실행하여 공용 IP 주소 리소스를 만듭니다. 
-
-    ```powershell
-    1..5 | ForEach-Object {New-AzPublicIpAddress -Name "publicIP$_" -ResourceGroupName $rg.ResourceGroupName -AllocationMethod Static -Location local}
-    ```
-
-1. 모든 IP 주소 리소스가 프로비전될 때까지 기다립니다.
-
->**검토**: 이 연습에서는 사용자 구독에서 공용 IP 주소 리소스를 만들었습니다.
-
-
-### 연습 4: 공용 IP 주소 사용량 관리(클라우드 운영자 역할)
-
-이 연습에서는 클라우드 운영자 역할을 맡아 공용 IP 주소 사용량을 검토 및 관리합니다. 이 연습에서는 다음 작업을 수행합니다.
-
-1. 공용 IP 주소 사용량 검토
-2. 공용 IP 주소 풀 추가
-
-#### 작업 1: 공용 IP 주소 사용량 검토(클라우드 운영자 역할)
-
-이 작업에서는 다음을 수행합니다.
-
-- 공용 IP 주소 사용량 검토(클라우드 운영자 역할)
-
-1. Azure Stack Hub 관리자 포털이 표시되어 있으며 CloudAdmin@azurestack.local로 로그인되어 있는 웹 브라우저 창으로 전환합니다.
-1. Azure Stack Hub 관리자 포털의 허브 메뉴에서 **대시보드**를 클릭하고 **리소스 공급자** 타일에서 **네트워크**를 클릭합니다.
-1. **네트워크** 블레이드에서 **공용 IP 풀 사용량** 그래프, 그리고 사용 중인 IP 주소 및 사용 가능한 IP 주소 수를 다시 검토합니다.
-
-    >**참고**: 사용자 구독(사용자 역할)에서 추가로 만든 공용 IP 주소 5개가 반영되어 IP 주소 수가 변경된 상태여야 합니다.
-
-#### 작업 2: 공용 IP 주소 풀 추가(클라우드 운영자 역할)
-
-이 작업에서는 다음을 수행합니다.
-
-- 공용 IP 주소 풀 추가
-
-1. Azure Stack Hub 관리자 포털이 표시된 웹 브라우저 창의 **네트워크** 블레이드에서 **공용 IP 풀 사용량** 타일을 클릭합니다.
-
-    >**참고**: **공용 IP 풀** 블레이드에 **'시작' 단독 작업이 진행 중입니다. 해당 작업이 진행 중인 동안에는 노드 추가 및 IP 풀 추가 작업이 사용하지 않도록 설정됩니다. 활동 로그를 확인하려면 여기를 클릭하십시오.** 메시지가 표시되면 '시작' 작업이 완료될 때까지 기다렸다가 다음 단계를 진행하세요.
-
-1. **공용 IP 풀** 블레이드에서 **+ IP 풀 추가**를 클릭합니다. 
-1. **IP 풀 추가** 블레이드에서 다음 설정을 지정하고 **추가**를 클릭합니다.
-
-    - 이름: **공용 풀 1**
-    - 지역: **로컬**
-    - 주소 범위(CIDR 블록): **192.168.110.0/24**
-
-1. 변경 내용이 적용될 때까지 기다렸다가 **네트워크** 블레이드로 다시 이동합니다.
-1. **공용 IP 풀 사용량** 그래프를 검토하여 사용 가능한 IP 주소 수가 변경되었음을 확인합니다.
-
->**검토**: 이 연습에서는 공용 IP 주소 풀을 검토 및 구성했습니다.
+>**レビュー**:この演習では、パブリック IP アドレス プールを確認して構成しました。
