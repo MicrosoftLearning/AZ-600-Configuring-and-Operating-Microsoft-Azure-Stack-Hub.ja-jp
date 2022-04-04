@@ -1,25 +1,30 @@
 ---
-title: 온라인 호스팅 지침
+title: オンラインでホスティングされている手順
 permalink: index.html
 layout: home
+ms.openlocfilehash: f4e2e1489e1997cfd064aa74eb5345e302bb2424
+ms.sourcegitcommit: 4949ab968553abc20d2d72d6fd30a33ffae0317a
+ms.translationtype: HT
+ms.contentlocale: ja-JP
+ms.lasthandoff: 01/13/2022
+ms.locfileid: "137893117"
 ---
+# <a name="content-directory"></a>コンテンツ ディレクトリ
 
-# 콘텐츠 디렉터리
+各ラボの演習とデモへのハイパーリンクを以下に示します。
 
-아래에 각 랩 연습과 데모의 하이퍼링크 목록이 나와 있습니다.
-
-## 랩
+## <a name="labs"></a>ラボ
 
 {% assign labs = site.pages | where_exp:"page", "page.url contains '/Instructions/Labs'" %}
-| 모듈 | 랩 |
+| モジュール | ラボ |
 | --- | --- | 
-{% for activity in labs  %}| {{ activity.lab.module }} | [{{ activity.lab.title }}{% if activity.lab.type %} - {{ activity.lab.type }}{% endif %}]({{ site.github.url }}{{ activity.url }}) |
+{% for activity in labs %}| {{ activity.lab.module }} | [{{ activity.lab.title }}{% if activity.lab.type %} - {{ activity.lab.type }}{% endif %}]({{ site.github.url }}{{ activity.url }}) |
 {% endfor %}
 
-## 데모
+## <a name="demos"></a>デモ
 
 {% assign demos = site.pages | where_exp:"page", "page.url contains '/Instructions/Demos'" %}
-| 모듈 | 데모 |
+| モジュール | デモ |
 | --- | --- | 
-{% for activity in demos  %}| {{ activity.demo.module }} | [{{ activity.demo.title }}]({{ site.github.url }}{{ activity.url }}) |
+{% for activity in demos %}| {{ activity.demo.module }} | [{{ activity.demo.title }}]({{ site.github.url }}{{ activity.url }}) |
 {% endfor %}
