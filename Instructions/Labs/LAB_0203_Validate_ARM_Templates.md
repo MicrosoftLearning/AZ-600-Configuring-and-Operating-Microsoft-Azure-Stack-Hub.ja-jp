@@ -153,8 +153,8 @@ ms.locfileid: "139251646"
 - Azure Stack Hub Quickstart テンプレートに対してテンプレート検証ツールを実行する
 
 1. **AzS-HOST1** へのリモート デスクトップ セッション内で、Web ブラウザーを起動して Azure Stack Hub QuickStart Templates リポジトリの「[**AzureStack 用 Windows 上の MySql Server**](https://github.com/Azure/AzureStack-QuickStart-Templates/tree/master/mysql-standalone-server-windows)」ページに移動します。 
-1. 「**AzureStack 用 Windows 上の MySql Server**」ページで「**azuredeploy.json**」をクリックします。
-1. 「[AzureStack-QuickStart-Templates/mysql-standalone-server-windows/azuredeploy.json](https://github.com/Azure/AzureStack-QuickStart-Templates/blob/master/mysql-standalone-server-windows/azuredeploy.json)」ページで、テンプレートの内容を確認します。
+1. **[AzureStack 用 Windows 上の MySql Server]** ページで **[azuredeploy.json]** をクリックします。
+1. [[AzureStack-QuickStart-Templates/mysql-standalone-server-windows/azuredeploy.json]](https://github.com/Azure/AzureStack-QuickStart-Templates/blob/master/mysql-standalone-server-windows/azuredeploy.json) ページで、テンプレートの内容を確認します。
 1. **[管理者: Windows PowerShell]** ウィンドウに切り替え、次のように実行して azuredeploy.json ファイルをダウンロードし、**sampletemplate1.json** という名前で **C:\\Templates** フォルダーに保存します。
 
     ```powershell
@@ -203,8 +203,8 @@ ms.locfileid: "139251646"
 - Azure Quickstart テンプレートに対してテンプレート検証ツールを実行する
 
 1. **AzS-HOST1** へのリモート デスクトップ セッション内で、AzureStack QuickStart テンプレート レポジトリが表示されている Web ブラウザーから、Azure QuickStart テンプレート レポジトリの「[**Ubuntu VM 上の MySQL Server 5.6**](https://github.com/Azure/azure-quickstart-templates/tree/master/application-workloads/mysql/mysql-standalone-server-ubuntu)」ページに移動します。
-1. 「**Ubuntu VM 上の MySQL Server**」ページで「**azuredeploy.json**」をクリックします。
-1. 「[azure-quickstart-templates/mysql-standalone-server-ubuntu/azuredeploy.json](https://github.com/Azure/azure-quickstart-templates/blob/master/application-workloads/mysql/mysql-standalone-server-ubuntu/azuredeploy.json)」ページで、テンプレートの内容を確認します。
+1. **[Ubuntu VM 上の MySQL Server 5.6]** ページで **[azuredeploy.json]** をクリックします。
+1. [[azure-quickstart-templates/mysql-standalone-server-ubuntu/azuredeploy.json]](https://github.com/Azure/azure-quickstart-templates/blob/master/application-workloads/mysql/mysql-standalone-server-ubuntu/azuredeploy.json) ページで、テンプレートの内容を確認します。
 1. **[管理者: Windows PowerShell]** ウィンドウに切り替え、次のように実行して azuredeploy.json ファイルをダウンロードし、**sampletemplate2.json** という名前で **C:\\Templates** フォルダーに保存します。
 
     ```powershell
@@ -280,7 +280,7 @@ ms.locfileid: "139251646"
     Report available at - C:\AzureStack-Tools-az\TemplateValidator\sampletemplate2validationreport.html
     ```
 
-1. 「**C:\AzureStack-Tools-az\TemplateValidator\sampletemplate2validationreport.html**」ファイルを開いて、レポートを確認します。 
+1. **C:\AzureStack-Tools-az\TemplateValidator\sampletemplate2validationreport.html** ファイルを開いて、レポートを確認します。 
 
     >**注**:レポートには、次の形式のエントリが含まれている必要があります。**NotSupported: apiversion (Resource type:Microsoft.Compute/virtualMachines).Not Supported Values - 2020-12-01**.
 
@@ -323,7 +323,7 @@ ms.locfileid: "139251646"
     },
     ```
 
-1. 「**Sampletemplate2.json**」ファイルに切り替え、前のタスクで修正した REST API バージョンを元の値に戻します。 このバージョンが、上記の「**AzureCloudCapabilities.json**」の API バージョンと一致していることを確認してから、変更内容を保存します。
+1. **sampletemplate2.json** ファイルに切り替え、前のタスクで修正した REST API バージョンを元の値に戻します。 このバージョンが、上記の **AzureCloudCapabilities.json** の API バージョンと一致していることを確認してから、変更内容を保存します。
 1. **[管理者: Windows PowerShell]** ウィンドウで次のように実行して、新しく変更したテンプレートを検証します。
 
     ```powershell

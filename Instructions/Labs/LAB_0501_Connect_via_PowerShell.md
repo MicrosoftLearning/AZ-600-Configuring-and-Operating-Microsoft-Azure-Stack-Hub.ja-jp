@@ -34,7 +34,7 @@ ms.locfileid: "139251649"
 
 このラボでは、Active Directory フェデレーション サービス (AD FS) (ID プロバイダーとしてバックアップされた Active Directory) に統合された ADSK インスタンスを使用します。 
 
->**注**:Azure Active Directory (Azure AD) に統合された Azure Stack Hub に接続する方法については、「[PowerShell を使用して Azure Stack Hub に接続する](https://docs.microsoft.com/en-us/azure-stack/operator/azure-stack-powershell-configure-admin?view=azs-2008&tabs=az1%2Caz2%2Caz3#connect-with-azure-ad)」を参照してください。
+>**注**: Azure Active Directory (Azure AD) に統合された Azure Stack Hub に接続する方法については、「[PowerShell を使用して Azure Stack Hub に接続する](https://docs.microsoft.com/en-us/azure-stack/operator/azure-stack-powershell-configure-admin?view=azs-2008&tabs=az1%2Caz2%2Caz3#connect-with-azure-ad)」を参照してください。
 
 ラボ環境は次のように構成されています。
 

@@ -77,7 +77,7 @@ ms.locfileid: "139251634"
     $ipAddress = (Resolve-DnsName -Name AzS-ERCS01).IPAddress
     ```
 
-1. **[管理者:Windows PowerShell ISE]** ウィンドウで次のように実行して、特権エンドポイントが実行されているインフラストラクチャ VM の IP アドレスを、WinRM の信頼されたホストの一覧に追加します (すべてのホストが既に許可されているのでない場合)。
+1. **[管理者: Windows PowerShell ISE]** ウィンドウで次のように実行して、特権エンドポイントが実行されているインフラストラクチャ VM の IP アドレスを、WinRM の信頼されたホストの一覧に追加します (すべてのホストが既に許可されているのでない場合)。
 
     ```powershell
     $trustedHosts = (Get-Item -Path WSMan:\localhost\Client\TrustedHosts).Value
@@ -105,7 +105,7 @@ ms.locfileid: "139251634"
     Enter-PSSession -ComputerName $ipAddress -ConfigurationName PrivilegedEndpoint -Credential $adminCredentials
     ```
 
-1. PowerShell リモート セッションが正常に確立されたことを確認します。 これで「Windows PowerShell ISE」ウィンドウの「コンソール」ペインに、特権エンドポイントが実行されているインフラストラクチャ VM の IP アドレスから始まるプロンプトが表示されます (角かっこで囲まれています)。
+1. PowerShell リモート セッションが正常に確立されたことを確認します。 これで [Windows PowerShell ISE] ウィンドウの [コンソール] ペインに、特権エンドポイントが実行されているインフラストラクチャ VM の IP アドレスから始まるプロンプトが表示されます (角かっこで囲まれています)。
 
 
 #### <a name="task-2-review-the-functionality-available-via-the-privileged-endpoint"></a>タスク 2:特権エンドポイントを介して利用できる機能について確認する
@@ -135,7 +135,7 @@ ms.locfileid: "139251634"
     ```
     >**注**:ASDK では更新がサポートされていないため、この手順はあくまでデモ目的であることに留意してください。 テストの失敗が報告されてもすべて無視します。
 
-    >**注**:**Test-AzureStack** 機能については、「[Azure Stack Hub システム状態の検証](https://docs.microsoft.com/en-us/azure-stack/operator/azure-stack-diagnostic-test?view=azs-2008)」を参照してください。
+    >**注**: **Test-AzureStack** 機能については、「[Azure Stack Hub システム状態の検証](https://docs.microsoft.com/en-us/azure-stack/operator/azure-stack-diagnostic-test?view=azs-2008)」を参照してください。
 
     >**注**:サポート シナリオでは、Microsoft サポート エンジニアが特権エンドポイント PowerShell セッションを昇格させて、Azure Stack Hub インフラストラクチャの内部にアクセスすることが必要となる場合があります。 このプロセスは、特権エンドポイントのロック解除と呼ばれます。 セッションの昇格プロセスには、2 つの手順、2 人のユーザー、2 つの組織認証プロセスが伴います。 ロック解除の手順は Azure Stack Hub オペレーターが開始し、オペレーターは常に環境の制御を保持します。 この演習では、このプロセスを表すエミュレート シナリオを通して作業に加わります。
 
@@ -160,7 +160,7 @@ ms.locfileid: "139251634"
 
 - 特権エンドポイントへのセッションを閉じ、セッション トランスクリプトを収集する
 
->**注**:特権エンドポイントでは、すべてのアクションとその出力がログに記録されます。 ログを収集するには、「**Close-PrivilegedEndpoint**」コマンドレットを使用してセッションを閉じます。 これよってエンドポイントが閉じられ、保管のためログ ファイルが外部ファイル共有に転送されます。
+>**注**:特権エンドポイントでは、すべてのアクションとその出力がログに記録されます。 ログを収集するには、**Close-PrivilegedEndpoint** コマンドレットを使用してセッションを閉じます。 これよってエンドポイントが閉じられ、保管のためログ ファイルが外部ファイル共有に転送されます。
 
 >**注**:まずは、特権エンドポイントのログを格納するためのファイル共有を作成することから始めます。
 
