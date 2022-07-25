@@ -1,12 +1,17 @@
 ---
 demo:
-    title: 'Demo: Deploying an ARM Template'
-    module: 'Module 1: Exploring Azure Resource Manager'
+  title: 'デモ: ARM テンプレートのデプロイ'
+  module: 'Module 1: Exploring Azure Resource Manager'
+ms.openlocfilehash: ff5a4aa30cb206ef4a1f6623232d3718a542592a
+ms.sourcegitcommit: 4949ab968553abc20d2d72d6fd30a33ffae0317a
+ms.translationtype: HT
+ms.contentlocale: ja-JP
+ms.lasthandoff: 01/13/2022
+ms.locfileid: "145884139"
 ---
+# <a name="demo-deploying-an-arm-template"></a>デモ: ARM テンプレートのデプロイ
 
-# Demo: Deploying an ARM Template
-
-## Instructions
+## <a name="instructions"></a>手順
 
 1. Quisque dictum convallis metus, vitae vestibulum turpis dapibus non.
 

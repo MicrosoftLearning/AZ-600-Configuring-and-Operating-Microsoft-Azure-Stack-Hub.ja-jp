@@ -1,151 +1,156 @@
 ---
 lab:
-    title: '랩: Azure Stack Hub에서 App Service 리소스 공급자 구현'
-    module: '모듈 2: 서비스 제공'
+  title: ラボ:App Service リソース プロバイダーを Azure Stack Hub に実装する
+  module: 'Module 2: Provide Services'
+ms.openlocfilehash: c1b1aaff4830ea834af3051aa731cdd59c3ffed2
+ms.sourcegitcommit: ded7cfa9cd6281bd9b56d2d7496746921dc82b73
+ms.translationtype: HT
+ms.contentlocale: ja-JP
+ms.lasthandoff: 06/29/2022
+ms.locfileid: "146735780"
 ---
+# <a name="lab---implement-app-service-resource-provider-in-azure-stack-hub"></a>ラボ - App Service リソース プロバイダーを Azure Stack Hub に実装する
+# <a name="student-lab-manual"></a>受講生用ラボ マニュアル
 
-# 랩 - Azure Stack Hub에서 App Service 리소스 공급자 구현
-# 학생 랩 매뉴얼
+## <a name="lab-dependencies"></a>ラボの依存関係
 
-## 랩 종속성
+- SQL Server リソース プロバイダーを Azure Stack Hub に実装する
 
-- Azure Stack Hub에서 SQL Server 리소스 공급자 구현
+## <a name="estimated-time"></a>推定所要時間
 
-## 예상 소요 시간
+4 時間
 
-4시간
+## <a name="lab-scenario"></a>ラボのシナリオ
 
-## 랩 시나리오
+あなたは Azure Stack Hub 環境のオペレーターとして、 テナントが App Service アプリと Azure Functions をデプロイできるようにする必要があります。
 
-여러분은 Azure Stack Hub 환경의 운영자입니다. 테넌트가 App Service 앱과 Azure 함수를 배포하도록 허용해야 합니다.
+## <a name="objectives"></a>目標
 
-## 목표
+このラボを完了すると、次のことができるようになります。
 
-이 랩을 완료하면 다음을 수행할 수 있습니다.
+ - App Service リソース プロバイダーを Azure Stack Hub に実装する
 
- - Azure Stack Hub에서 App Service 리소스 공급자 구현
+## <a name="lab-environment"></a>ラボ環境 
 
-## 랩 환경 
+このラボでは、Active Directory フェデレーション サービス (AD FS) (ID プロバイダーとしてバックアップされた Active Directory) に統合された ADSK インスタンスを使用します。 
 
-이 랩에서는 AD FS(Active Directory Federation Services)와 통합된 ASDK 인스턴스(ID 공급자로 백업된 Active Directory)를 사용합니다. 
+ラボ環境は次のように構成されています。
 
-랩 환경의 구성은 다음과 같습니다.
+- 次のアクセス ポイントを持つ、**AzS-HOST1** サーバーで実行されている ASDK デプロイ。
 
-- 다음 액세스 지점을 사용하여 **AzS-HOST1** 서버에서 실행되는 ASDK 배포:
+  - 管理者ポータル: https://adminportal.local.azurestack.external
+  - 管理者の ARM エンドポイント: https://adminmanagement.local.azurestack.external
+  - ユーザー ポータル: https://portal.local.azurestack.external
+  - ユーザーの ARM エンドポイント: https://management.local.azurestack.external
 
-  - 관리자 포털: https://adminportal.local.azurestack.external
-  - 관리자 ARM 엔드포인트: https://adminmanagement.local.azurestack.external
-  - 사용자 포털: https://portal.local.azurestack.external
-  - 사용자 ARM 엔드포인트: https://management.local.azurestack.external
+- 管理ユーザー:
 
-- 관리자:
+  - ASDK クラウド オペレーターのユーザー名: **CloudAdmin@azurestack.local**
+  - ASDK クラウド オペレーターのパスワード:**Pa55w.rd1234**
+  - ASDK ホスト管理者のユーザー名: **AzureStackAdmin@azurestack.local**
+  - ASDK ホスト管理者のパスワード:**Pa55w.rd1234**
 
-  - ASDK 클라우드 운영자 사용자 이름: **CloudAdmin@azurestack.local**
-  - ASDK 클라우드 운영자 암호: **Pa55w.rd1234**
-  - ASDK 호스트 관리자 사용자 이름: **AzureStackAdmin@azurestack.local**
-  - ASDK 호스트 관리자 암호: **Pa55w.rd1234**
-
-이 랩을 진행하면서 PowerShell을 통해 Azure Stack Hub를 관리하는 데 필요한 소프트웨어를 설치합니다. 
-
-
-### 연습 1: Azure Stack Hub에서 App Service 리소스 공급자 설치
-
-이 연습에서는 Azure Stack Hub에서 App Service 리소스 공급자를 설치합니다.
-
-1. SQL Server 호스팅 서버 프로비전
-1. 파일 서버 프로비전
-1. App Service 리소스 공급자 설치
-1. App Service 리소스 공급자 설치 유효성 검사
-
->**참고**: 이 연습을 최대한 빠른 시간 내에 끝낼 수 있도록 Azure Stack Hub App Service 리소스 공급자를 설치하려면 수행해야 하는 다음을 비롯한 일부 작업은 이미 완료된 상태입니다.
-
-- Azure Marketplace 신디케이션 구현
-- 다음 Azure Marketplace 항목 다운로드:
-
-  - **[smalldisk] Windows Server 2019 Datacenter Server Core-Bring your own license**
-  - **Windows Server 2016 Datacenter-Bring your own license** 
-  - **사용자 지정 스크립트 확장**
+このラボでは、PowerShell を介して Azure Stack Hub を管理するために必要なソフトウェアをインストールします。 
 
 
-#### 작업 1: SQL Server 호스팅 서버 프로비전
+### <a name="exercise-1-install-the-app-service-resource-provider-in-azure-stack-hub"></a>演習 1:App Service リソース プロバイダーを Azure Stack Hub にインストールする
 
-이 작업에서는 다음을 수행합니다.
+この演習では、App Service リソース プロバイダーを Azure Stack Hub にインストールします。
 
-- SQL Server 호스팅 서버 프로비전
+1. SQL Server ホスティング サーバーをプロビジョニングする
+1. ファイル サーバーをプロビジョニングする
+1. App Service リソース プロバイダーのインストール
+1. App Service リソース プロバイダーのインストールを検証する
 
-1. 필요한 경우 다음 자격 증명을 사용하여 **AzS-HOST1**에 로그인합니다.
+>**注**:演習の所要時間を可能な限り短縮するため、Azure Stack Hub App Service リソース プロバイダーのインストールに必要な、以下をはじめとする一部のタスクはすでに完了した状態となっています。
 
-    - 사용자 이름: **AzureStackAdmin@azurestack.local**
-    - 암호: **Pa55w.rd1234**
+- Azure Marketplace シンジケーションを実装する
+- 次の Azure Marketplace 項目をダウンロードする
 
-1. **AzS-HOST1**에 연결된 원격 데스크톱 세션 내에서 [Azure Stack Hub 관리자 포털](https://adminportal.local.azurestack.external/)이 표시된 웹 브라우저 창을 열고 CloudAdmin@azurestack.local로 로그인합니다.
-1. Azure Stack Hub 관리자 포털의 허브 메뉴에서 **리소스 만들기**를 클릭합니다.
-1. **새로 만들기** 블레이드에서 **컴퓨팅**을 선택하고 사용 가능한 리소스 종류 목록에서 **{WS-BYOL} 무료 SQL Server 라이선스: Windows Server 2016의 SQL Server 2017 Express**를 선택합니다.
-1. **가상 머신 만들기** 블레이드의 **기본 내용** 창에서 다음 설정을 지정하고 **확인**을 클릭합니다(나머지는 기본값을 그대로 유지).
+  - **[smalldisk] Windows Server 2019 Datacenter Server Core - ライセンス持ち込み**
+  - **Windows Server 2016 Datacenter - ライセンス持ち込み** 
+  - **カスタム スクリプト拡張機能**
 
-    - 이름: **SqlHOST1**
-    - VM 디스크 유형: **프리미엄 SSD**
-    - 사용자 이름: **sqladmin**
-    - 암호: **Pa55w.rd**
-    - 구독: **기본 공급자 구독**
-    - 리소스 그룹: 새 리소스 그룹 **sql.resources-RG**의 이름.
-    - 위치: **로컬**
 
-1. **크기 선택** 블레이드에서 **DS1_v2**를 선택하고 **선택**을 클릭합니다.
-1. **가상 머신 만들기** 블레이드의 **설정** 창에서 **네트워크 보안 그룹** 설정을 **고급**으로 지정하고 **네트워크 보안 그룹(방화벽)** 을 클릭합니다.
-1. **네트워크 보안 그룹 만들기** 블레이드에서 **+ 인바운드 규칙 추가**를 클릭합니다.
-1. **인바운드 보안 규칙 추가** 블레이드에서 다음 설정을 지정하고 **추가**를 클릭합니다(나머지는 기본값을 그대로 유지).
+#### <a name="task-1-provision-a-sql-server-hosting-server"></a>タスク 1:SQL Server ホスティング サーバーをプロビジョニングする
 
-    - 대상 포트 범위: **1433**
-    - 프로토콜: **TCP**
-    - 작업: **허용**
-    - 우선 순위: **200**
-    - 이름: **custom-allow-sql**
+このタスクでは次のことを行います。
 
-1. **네트워크 보안 그룹 만들기** 블레이드로 돌아와서 **확인**을 클릭합니다.
-1. **가상 머신 만들기** 블레이드의 **설정** 창으로 돌아와서 다음 설정을 지정하고 **확인**을 클릭합니다(나머지는 기본값을 그대로 유지).
+- SQL Server ホスティング サーバーをプロビジョニングする
 
-    - 부팅 진단: 사용 안 함
-    - 게스트 OS 진단: 사용 안 함
+1. 必要であれば、次の資格情報を使用して **AzS-HOST1** にサインインします。
 
-1. **가상 머신 만들기** 블레이드의 **SQL Server 설정** 창에서 다음 설정을 지정하고 **확인**을 클릭합니다(나머지는 기본값을 그대로 유지).
+    - ユーザー名: **AzureStackAdmin@azurestack.local**
+    - パスワード: **Pa55w.rd1234**
 
-    - SQL 연결: **공용(인터넷)**
-    - 포트: **1433**
-    - SQL 인증: **사용**
-    - 로그인 이름: **SQLAdmin**
-    - 암호: **Pa55w.rd**
-    - 스토리지 구성: **일반**
-    - 자동화된 패치: **사용 안 함**
-    - 자동화된 백업: **사용 안 함**
-    - Azure Key Vault 통합: **사용 안 함**
+1. **AzS-HOST1** へのリモート デスクトップ セッション内で、Web ブラウザー ウィンドウを開いて [Azure Stack Hub 管理者ポータル](https://adminportal.local.azurestack.external/)を表示し、CloudAdmin@azurestack.local としてサインインします。
+1. Azure Stack Hub 管理者ポータルのハブ メニューで、**[リソースの作成]** をクリックします。
+1. **[新規作成]** ブレードで **[コンピューティング]** を選択し、利用可能なリソースの種類の一覧で **{WS-BYOL} 無料の SQL Server ライセンス:Windows Server 2016 上の SQL Server 2017 Express** を選択します。
+1. **[仮想マシンの作成]** ウィンドウの **[基本]** ペインで、次のように設定してから **[OK]** をクリックします (他の設定は規定値のままにします)。
 
-1. **가상 머신 만들기** 블레이드의 **요약** 창에서 **확인**을 클릭합니다.
+    - 名前: **SqlHOST1**
+    - VM ディスクの種類:**Premium SSD**
+    - ユーザー名: **sqladmin**
+    - パスワード: **Pa55w.rd1234**
+    - [サブスクリプション]:**既定のプロバイダー サブスクリプション**
+    - リソース グループ: 新しいリソース グループの名前 **sql.resources-RG**
+    - 場所: **ローカル**
 
-    >**참고**: 배포가 완료될 때까지 기다립니다. 20분 정도 걸릴 수 있습니다.
+1. **[サイズの選択]** ウィンドウで、**[DS1_v2]** を選択してから **[選択]** をクリックします。
+1. **[仮想マシンの作成]** ウィンドウの **[設定]** ペインで、**[ネットワーク セキュリティ グループ]** の設定を **[詳細]** に設定してから、**[ネットワーク セキュリティ グループ (ファイアウォール)]** をクリックします。
+1. **[ネットワーク セキュリティ グループの作成]** ウィンドウで、**[受信規則の追加]** をクリックします。
+1. **[受信セキュリティ規則の追加]** ウィンドウで次のように設定してから **[追加]** を選択します (他の設定は既定値のままにします)。
 
-1. 배포가 완료되면 **SqlHOST1** 가상 머신 블레이드로 이동하여 **개요** 섹션의 **DNS 이름** 레이블 바로 아래에 있는 **구성**을 클릭합니다.
-1. **SqlHOST1-ip \| 구성** 블레이드의 **DNS 이름 레이블(옵션)** 텍스트 상자에 **sqlhost1**을 입력하고 **저장**을 클릭합니다.
+    - 宛先ポート範囲:**1433**
+    - プロトコル: **TCP**
+    - アクション: **許可**
+    - 優先順位: **200**
+    - 名前: **custom-allow-sql**
 
-    >**참고**: 이렇게 하면 **sqlhost1.local.cloudapp.azurestack.external** DNS 이름을 통해 **sqlhost1**을 사용할 수 있게 됩니다.
+1. **[ネットワーク セキュリティ グループの作成]** ウィンドウに戻って **[OK]** をクリックします。
+1. **[仮想マシンの作成]** ウィンドウの **[設定]** タブに戻り、次のように設定してから **[OK]** をクリックします (他の設定は規定値のままにします)。
 
-1. **sqlhost1-ip \| 구성** 블레이드에서 **할당** 옵션을 **정적**으로 설정하고 **저장**을 클릭합니다.
+    - ブート診断:Disabled (無効)
+    - ゲスト OS の診断:Disabled (無効)
 
-    >**참고**: 이렇게 하면 **sqlhost1** 가상 머신 다시 시작이 트리거됩니다. 다시 시작이 완료될 때까지 기다렸다가 다음 단계를 진행합니다.
+1. **[仮想マシンの作成]** ウィンドウの **[SQL Server の設定]** タブで、次のように設定してから **[OK]** をクリックします (他の設定は規定値のままにします)。
 
-1. **AzSHOST-1**에 연결된 원격 데스크톱 세션 내에서 **sqlhost1.local.cloudapp.azurestack.external**로 연결하는 원격 데스크톱 세션을 시작하고 메시지가 표시되면 다음 자격 증명을 사용하여 로그인합니다.
+    - SQL への接続:**パブリック (インターネット)**
+    - ポート:**1433**
+    - SQL 認証:**有効にする**
+    - ログイン名:**SQLAdmin**
+    - パスワード: **Pa55w.rd1234**
+    - ストレージの構成:**全般**
+    - 自動修正:**無効化**
+    - 自動バックアップ:**無効化**
+    - Azure Key Vault の統合:**無効化**
 
-    - 사용자 이름: **SQLAdmin**
-    - 암호: **Pa55w.rd**
+1. **[仮想マシンの作成]** ウィンドウの **[概要]** ペインで、**[OK]** をクリックします。
 
-1. **SqlHOST1**에 연결된 원격 데스크톱 세션 내에서 **시작**을 마우스 오른쪽 단추로 클릭하고 오른쪽 클릭 메뉴에서 **명령 프롬프트(관리자)** 를 선택합니다. 
-1. **SqlHOST1**에 연결된 원격 데스크톱 세션 내의 **관리자:  명령 프롬프트**에서 다음 명령을 실행하여 로컬 SQL Server 인스턴스로의 SQLCMD 세션을 시작합니다.
+    >**注**: デプロイが完了するまで待ちます。 20 分ほどかかる場合があります。
+
+1. デプロイが完了したら、**SqlHOST1** 仮想マシン ウィンドウに移動し、**[概要]** セクションの **[DNS 名]** ラベルの真下にある **[構成]** をクリックします。
+1. **[SqlHOST1-ip \| 構成]** ウィンドウで、**[DNS 名ラベル (オプション)]** テキスト ボックスに「**sqlhost1**」と入力し、**[保存]** をクリックします。
+
+    >**注**: これにより、**sqlhost1.local.cloudapp.azurestack.external** DNS 名を介して **sqlhost1** が利用できるようになります。
+
+1. **[sqlhost1-ip \| 構成]** ブレードで、 **[割り当て]** オプションを **[静的]** に設定し、 **[保存]** をクリックします。
+
+    >**注**:これにより、**sqlhost1** 仮想マシンの再起動がトリガーされます。 再起動が完了するのを待ってから、次の手順に進みます。
+
+1. **AzSHOST-1** へのリモート デスクトップ セッション内で、**sqlhost1.local.cloudapp.azurestack.external** へのリモート デスクトップ セッションを開始し、サインインを求められたら、次の資格情報を使用してサインインします。
+
+    - ユーザー名:**SQLAdmin**
+    - パスワード: **Pa55w.rd1234**
+
+1. **SqlHOST1** へのリモート デスクトップ セッション内で、**[スタート]** を右クリックし、右クリック メニューから **[コマンド プロンプト (管理者)]** を選択します。 
+1. **SqlHOST1** へのリモート デスクトップ セッション内で、 **[管理者: コマンド プロンプト]** から以下のコマンドを実行し、ローカル SQL Server インスタンスに対して SQLCMD セッションを開始します。
 
     ```
     sqlcmd
     ```
 
-1. **SqlHOST1**에 연결된 원격 데스크톱 세션 내의 **관리자: 명령 프롬프트**에서 다음 명령을 실행하여 SQL Server용으로 포함된 데이터베이스 인증을 사용하도록 설정합니다.
+1. **SqlHOST1** へのリモート デスクトップ セッション内で、 **[管理者: コマンド プロンプト**] から以下のコマンドを実行し、SQL サーバーの包含データベース認証を有効にします。
 
     ```
     sp_configure 'contained database authentication', 1;
@@ -154,39 +159,39 @@ lab:
     GO
     ```
 
-    > **참고:** 이 랩의 뒷부분에서 App Service 리소스 공급자를 구현할 때 이 호스팅 서버를 사용하려면 이 단계를 수행해야 합니다.
+    > **注:**  この操作は、ラボの後半で App Service リソース プロバイダーを実装する際に、このホスティング サーバーを使用するために必要となります。
 
-    > **참고:** **sqlhost1.local.cloudapp.azurestack.external**로 연결하는 원격 데스크톱 세션은 열어 둡니다. 이 랩 뒷부분에서 해당 세션을 사용할 것입니다.
+    > **注:**  **sqlhost1.local.cloudapp.azurestack.external** へのリモート デスクトップ セッションは開いたままにします。 この値はこのラボの後半で使用します。
 
 
-#### 작업 2: 파일 서버 프로비전
+#### <a name="task-2-provision-a-file-server"></a>タスク 2:ファイル サーバーをプロビジョニングする
 
-이 작업에서는 다음을 수행합니다.
+このタスクでは次のことを行います。
 
-- 파일 서버 프로비전
+- ファイル サーバーをプロビジョニングする
 
-1. **AzSHOST-1**에 연결된 원격 데스크톱 세션으로 전환하여 Azure Stack 관리자 포털의 허브 메뉴에서 **모든 서비스**를 클릭합니다.
-1. 서비스 목록에서 **Marketplace 관리**를 클릭합니다.
-1. **Marketplace 관리 - Marketplace 항목** 블레이드에서 **[smalldisk] Windows Server 2019 Datacenter Server Core-Bring your own license** 항목을 검색하여 해당 항목이 사용 가능한지 확인합니다.
-1. **AzSHOST-1**에 연결된 원격 데스크톱 세션 내의 브라우저 창에서 새 탭을 열고 (https://aka.ms/appsvconmasdkfstemplate)으로 이동합니다.
-1. **AzureStack-QuickStart-Templates / appservice-fileserver-standalone** 페이지에서 **azuredeploy.json**을 클릭한 다음 **Raw**를 클릭합니다.
-1. 페이지의 전체 내용을 선택하여 클립보드에 복사합니다.
-1. Azure Stack 관리자 포털로 다시 전환하여 **+ 리소스 만들기**를 클릭합니다.
-1. **새로 만들기** 블레이드에서 **사용자 지정**을 클릭한 다음 **템플릿 배포**를 클릭합니다.
-1. **사용자 지정 배포** 블레이드에서 **편집기에서 사용자 고유의 템플릿을 빌드합니다.** 를 선택합니다. 
-1. **템플릿 편집** 블레이드에서 미리 작성된 템플릿을 클립보드의 내용으로 바꿉니다.
-1. **사용자 지정 배포** 블레이드에서 **템플릿 편집**을 클릭합니다.
-1. **템플릿 편집** 블레이드의 **매개 변수** 섹션에서 다음 값을 설정합니다.
+1. **AzSHOST-1** へのリモート デスクトップ セッションに切り替え、Azure Stack 管理者ポータルのハブ メニューで **[すべてのサービス]** をクリックします。
+1. サービスの一覧で **[Marketplace Management]** をクリックします
+1. **[Marketplace Management - Marketplace 項目]** ウィンドウで、**[[smalldisk] Windows Server 2019 Datacenter Server Core - ライセンス持ち込み]** 項目を検索し、これが利用可能となっていることを確認します。
+1. **AzSHOST-1** へのリモート デスクトップ セッション内で、ブラウザーの画面で新しいタブを開き、(https://aka.ms/appsvconmasdkfstemplate) ) に移動します。
+1. **[AzureStack-QuickStart-Templates / appservice-fileserver-standalone]** ページで、**azuredeploy.json** をクリックしてから **[生]** をクリックします。
+1. ページの全コンテンツを選択して、クリップボードにコピーします。
+1. Azure Stack 管理者ポータルに戻って、**[+ リソースの作成]** をクリックします。
+1. **[新規作成]** ウィンドウで、**[カスタム]** をクリックしてから **[テンプレートのデプロイ]** をクリックします。
+1. **[カスタム デプロイ]** ウィンドウで、**[エディターで独自のテンプレートを作成する]** を選択します。 
+1. **[テンプレートの編集]** ウィンドウで、作成済みのテンプレートをクリップボードの内容に置き換えます。
+1. **[カスタム デプロイ]** ウィンドウで **[テンプレートの編集]** をクリックします。
+1. **[テンプレートの編集]** ウィンドウの **[パラメーター]** セクションで、以下の値を設定します。
 
-    - **imageReference**의 **defaultValue**: **MicrosoftWindowsServer**로 설정 **| WindowsServer | 2019-Datacenter-Core-smalldisk | latest**
-    - **imageReference**의 **allowedValue**: **MicrosoftWindowsServer**로 설정 **| WindowsServer | 2019-Datacenter-Core-smalldisk | latest**
-    - **fileServerVirtualMachineSize**의 **defaultValue**: **Standard_A1_v2**로 설정
-    - **fileServerVirtualMachineSize**의 **allowedValues**: **Standard_A1_v2**로 설정
-    - **adminPassword**의 **defaultValue**: **Pa55w.rd1234**로 설정
-    - **fileShareOwnerPassword**의 **defaultValue**: **Pa55w.rd1234**로 설정
-    - **fileShareUserPassword**의 **defaultValue**: **Pa55w.rd1234**로 설정
+    - **imageReference** の **defaultValue**: **MicrosoftWindowsServer | WindowsServer | 2019-Datacenter-Core-smalldisk | latest** に設定
+    - **imageReference** の **allowedValues**: **MicrosoftWindowsServer | WindowsServer | 2019-Datacenter-Core-smalldisk | latest** に設定
+    - **fileServerVirtualMachineSize** の **defaultValue**: **Standard_A1_v2** に設定
+    - **fileServerVirtualMachineSize** の **allowedValues**: **Standard_A1_v2** に設定
+    - **adminPassword** の **defaultValue**: **Pa55w.rd1234** に設定
+    - **fileShareOwnerPassword** の **defaultValue**: **Pa55w.rd1234** に設定
+    - **fileShareUserPassword** の **defaultValue**: **Pa55w.rd1234** に設定
 
-    > **참고:** 그러면 **Parameters** 섹션의 콘텐츠가 다음과 같이 설정됩니다.
+    > **注:** これにより、**[パラメーター]** セクションの内容は以下のようになります。
 
     ```json
       "parameters": {
@@ -270,27 +275,27 @@ lab:
       },
     ```
 
-1. **템플릿 편집** 블레이드의 **변수** 섹션에서 **"sku": "2016-Datacenter",** 를 **"sku": "2019-Datacenter-Core-smalldisk",** 로 바꾸고 **저장**을 선택합니다.
-1. **사용자 지정 배포** 블레이드로 돌아와서 **구독** 드롭다운 목록에서 **기본 공급자 구독**을 선택하고 **리소스 그룹** 섹션에서 **sql.resources-RG**를 선택합니다.
-1. **사용자 지정 배포** 블레이드에서 **검토 + 만들기**를 클릭한 다음 **만들기**를 클릭합니다.
+1. **[テンプレートの編集]** ブレードの **[変数]** セクションで、 **"sku":"2016-Datacenter",** を **"sku":"2019-Datacenter-Core-smalldisk",** に置き換え、 **[保存]** を選択します。
+1. **[カスタム デプロイ]** ウィンドウに戻り、**[サブスクリプション]** ドロップダウン リストで **[既定のプロバイダー サブスクリプション]** を選択し、**[リソース グループ]** セクションで **sql.resources-RG** を選択します。
+1. **[カスタム デプロイ]** ウィンドウで、**[確認および作成]** をクリックしてから **[作成]** をクリックします。
 
-    > **참고:** 배포가 완료될 때까지 기다립니다. 15분 정도 걸립니다.
+    > **注:**  デプロイが完了するまで待ちます。 通常は 15 分ほどかかります。
 
 
-#### 작업 3: App Service 리소스 공급자 설치
+#### <a name="task-3-install-the-app-service-resource-provider"></a>タスク 3:App Service リソース プロバイダーをインストールする
 
-이 작업에서는 다음을 수행합니다.
+このタスクでは次のことを行います。
 
-- App Service 리소스 공급자 설치
+- App Service リソース プロバイダーのインストール
 
-1. **AzSHOST-1**에 연결된 원격 데스크톱 세션 내의 Azure Stack 관리자 포털 허브 메뉴에서 **모든 서비스**를 클릭합니다.
-1. 서비스 목록에서 **Marketplace 관리**를 클릭합니다.
-1. **Marketplace 관리 - Marketplace 항목** 블레이드에서 **Windows Server 2016 Datacenter-Bring your own license** 항목을 검색하여 해당 항목이 사용 가능한지 확인합니다.
-1. **Marketplace 관리 - Marketplace 항목** 블레이드에서 **사용자 지정 스크립트 확장** 항목을 검색하여 해당 항목이 사용 가능한지 확인합니다.
-1. **AzSHOST-1**에 연결된 원격 데스크톱 세션 내에서 웹 브라우저를 시작하고 (https://aka.ms/appsvconmasinstaller) 로 이동하여 **AppService.exe**를 다운로드합니다. 다운로드가 완료되면 **C:\\Downloads\\AppServiceRP** 폴더에 해당 파일을 복사합니다(필요하면 폴더를 만드세요).
-1. 웹 브라우저에서 (https://aka.ms/appsvconmashelpers) 로 이동하여 **AppServiceHelperScripts.zip**을 다운로드합니다. 다운로드가 완료되면 **C:\\Downloads\\AppServiceRP** 폴더에 파일의 압축을 풉니다.
-1. **AzSHOST-1**에 연결된 원격 데스크톱 세션 내에서 관리자로 Windows PowerShell을 시작합니다.
-1. **관리자: Windows PowerShell** 창에서 다음 명령을 실행하여 Azure Stack에서 App Service에 필요한 인증서를 만듭니다.
+1. **AzSHOST-1** へのリモート デスクトップ セッション内で、Azure Stack 管理者ポータルのハブ メニューの **[すべてのサービス]** をクリックします。
+1. サービスの一覧で **[Marketplace Management]** をクリックします。
+1. **[Marketplace Management - Marketplace 項目]** ウィンドウで、**[Windows Server 2016 Datacenter - ライセンス持ち込み]** 項目を検索し、これが利用可能となっていることを確認します。
+1. **[Marketplace Management - Marketplace 項目]** ウィンドウで、**[カスタム スクリプト拡張機能]** 項目を検索し、これが利用可能になっていることを確認します。
+1. **AzSHOST-1** へのリモート デスクトップ セッション内で、Web ブラウザーを起動して (https://aka.ms/appsvconmasinstaller) に移動し、**AppService.exe** をダウンロードします。ダウンロードが完了したら、ファイルを **C:\\Downloads\\AppServiceRP** フォルダー (必要に応じて作成します) にコピーします。
+1. Web ブラウザーで (https://aka.ms/appsvconmashelpers) に移動し、**AppServiceHelperScripts.zip** をダウンロードします。ダウンロードが完了したら、その内容を **C:\\Downloads\\AppServiceRP** フォルダーに抽出します。
+1. **AzSHOST-1** へのリモート デスクトップ セッション内で、管理者として Windows PowerShell を起動します。
+1. **[管理者: Windows PowerShell]** ウィンドウで以下のコマンドを実行して、Azure Stack 上の App Service に必要な証明書を作成します。
 
     ```powershell
     Set-Location -Path C:\Downloads\AppServiceRP
@@ -299,26 +304,26 @@ lab:
     $pfxPass = ConvertTo-SecureString 'Pa55w.rd1234pfx' -AsPlainText -Force
 
     .\Create-AppServiceCerts.ps1 `
-	-pfxPassword $pfxPass `
-	-DomainName 'local.azurestack.external'
+    -pfxPassword $pfxPass `
+    -DomainName 'local.azurestack.external'
     ```
 
-1. **관리자: Windows PowerShell** 창에서 다음 명령을 실행하여 App Service 공급자를 설치하는 데 필요한 Azure Stack Hub용 Azure Resource Manager 루트 인증서를 만듭니다.
+1. **[管理者: Windows PowerShell]** ウィンドウで以下のコマンドを実行して、App Service プロバイダーのインストールに必要な、Azure Stack Hub 用の Azure Resource Manager ルート証明書を作成します。
 
     ```
     $domain = 'azurestack.local'
     $privilegedEndpoint = 'AzS-ERCS01'
 
-    # 권한 있는 엔드포인트 액세스에 필요한 클라우드 관리자 자격 증명을 추가합니다.
+    # Add the cloudadmin credential that's required for privileged endpoint access.
     $cloudAdminPass = ConvertTo-SecureString 'Pa55w.rd1234' -AsPlainText -Force
     $cloudAdminCreds = New-Object System.Management.Automation.PSCredential ("CloudAdmin@$domain", $cloudAdminPass)
 
     .\Get-AzureStackRootCert.ps1 -PrivilegedEndpoint $privilegedEndpoint -CloudAdminCredential $cloudAdminCreds
     ```
 
-    > **참고:** 이 스크립트는 Azure Stack Hub용 Azure Resource Manager 루트 인증서가 들어 있는 AzureStackCertificationAuthority.cer 파일을 로컬 폴더에 만듭니다.
+    > **注:** このスクリプトにより、AzureStackCertificationAuthority.cer という名前のファイル (Azure Stack Hub 用の Azure Resource Manager ルート証明書が含まれます) がローカル フォルダーに作成されます。
 
-1. **관리자: Windows PowerShell** 창에서 다음 명령을 실행하여 App Service 공급자를 설치하는 데 필요한 AD FS 앱을 만듭니다.
+1. **[管理者: Windows PowerShell]** ウィンドウで以下のコマンドを実行して、App Service プロバイダーのインストールに必要な AD FS アプリを作成します。
 
     ```
     $domain = 'azurestack.local'
@@ -335,163 +340,163 @@ lab:
        -CertificatePassword $certificatePassword
     ```
 
-1. 스크립트의 출력에서 생성된 AD FS 애플리케이션의 ID를 나타내는 GUID를 복사합니다. 
+1. スクリプトの出力で、生成された AD FS アプリケーションの ID を表す GUID をコピーします。 
 
-    > **참고:** 이 GUID를 적어 두세요. 이 작업 뒷부분에서 해당 GUID가 필요합니다.
+    > **注:**  この GUID は必ず記録しておいてください。 このタスクの後半で必要になります。
 
-1. **관리자: Windows PowerShell** 창의 **관리자: Windows PowerShell** 창에서 다음 명령을 실행하여 AppService.exe를 시작합니다.
+1. **[管理者: Windows PowerShell]** ウィンドウと **[管理者: Windows PowerShell]** ウィンドウで、以下のコマンドを実行して AppService.exe を起動します。
 
     ```
     .\AppService.exe
     ```
 
-    > **참고:** 이렇게 하면 Microsoft Azure App Service 설치 마법사가 시작됩니다.
+    > **注:** これにより、Microsoft Azure App Service セットアップ ウィザードが開始します。
 
-1. **App Service를 배포하거나 최신 버전으로 업그레이드합니다.** 를 클릭합니다.
-1. **Microsoft 소프트웨어 보조 사용 조건** 페이지에서 내용을 검토하고 **사용 조건을 읽고 이해했으며, 이에 동의합니다.** 체크박스를 클릭한 후에 **다음**을 클릭합니다.
-1. 타사 사용 조건이 표시되는 페이지에서 내용을 검토하고 **사용 조건을 읽고 이해했으며, 이에 동의합니다.** 체크박스를 클릭한 후에 **다음**을 클릭합니다.
-1. 관리자 및 테넌트 ARM 엔드포인트가 표시되는 페이지에서 정보가 정확한지 확인하고 **다음**을 클릭합니다.
-1. Azure Stack App Service 클라우드 정보 페이지에서 **자격 증명** 옵션이 선택되어 있는지 확인하고 **연결**을 클릭합니다.
-1. 메시지가 표시되면 암호 **Pa55w.rd1234**를 사용하여 **CloudAdmin@AzureStack.local**으로 로그인합니다.
-1. Azure Stack App Service 클라우드 정보 페이지로 돌아와서 **Azure Stack 구독** 드롭다운 목록에서 **기본 공급자 구독**을 선택하고 **Azure Stack 위치** 드롭다운 목록에서는 **로컬**을 선택한 후 **다음**을 클릭합니다.
-1. **가상 네트워크 구성**에서 기본 설정을 수락하고 **다음**을 클릭합니다.
-1. 다음 페이지에서 아래 정보를 지정하고 **다음**을 클릭합니다.
+1. **[Deploy App Service or upgrade to the latest version]\(App Service をデプロイするか、または最新バージョンにアップグレードする\)** をクリックします。
+1. **[Microsoft ソフトウェア ライセンスの補足条項]** ページでその内容を確認し、**[ライセンス条項の内容を読み、理解し、同意しました]** チェックボックスをオンにして **[次へ]** をクリックします。
+1. サード パーティ ライセンス条項が表示されたページでその内容を確認し、**[ライセンス条項の内容を読み、理解し、同意しました]** チェックボックスをオンにして **[次へ]** をクリックします。
+1. 管理者およびテナントの ARM エンドポイントが表示されているページで、情報が正しいことを確認してから **[次へ]** をクリックします。
+1. Azure Stack App Service クラウド情報のページで、**[資格情報]** オプションが選択されていることを確認してから **[接続]** をクリックします。
+1. メッセージが表示されたら、ユーザー名 **CloudAdmin@AzureStack.local** とパスワード **Pa55w.rd1234** でサインインし、ます。
+1. Azure Stack App Service クラウド情報のページに戻り、**[Azure Stack サブスクリプション]** ドロップダウン リストで **[既定のプロバイダー サブスクリプション]** を選択してから、**[Azure Stack の場所]** ドロップダウン リストで **[ローカル]** を選択して **[次へ]** をクリックします。
+1. **[仮想ネットワークの構成]** で、既定の設定を使用して **[次へ]** をクリックします。
+1. 次のページで、以下のように設定してから **[次へ]** をクリックします。
 
-    - 파일 공유 UNC 경로: **\\appservicefileshare.local.cloudapp.azurestack.external\websites**
-    - 파일 공유 소유자: **fileshareowner**
-    - 파일 공유 소유자 암호: **Pa55w.rd1234**
-    - 파일 공유 사용자: **fileshareuser**
-    - 파일 공유 사용자 암호: **Pa55w.rd1234**
+    - ファイル共有 UNC パス: **\\appservicefileshare.local.cloudapp.azurestack.external\websites**
+    - ファイル共有所有者: **fileshareowner**
+    - ファイル共有所有者のパスワード:**Pa55w.rd1234**
+    - ファイル共有ユーザー: **fileshareuser**
+    - ファイル共有ユーザーのパスワード:**Pa55w.rd1234**
 
-1. 다음 페이지에서 이 작업 앞부분에서 생성한 애플리케이션 ID를 식별하는 설정을 지정하고 **다음**을 클릭합니다.
+1. 次のページで、このタスクの前半で生成したアプリケーション ID が特定されるよう設定を行い、**[次へ]** をクリックします。
 
-    - ID 애플리케이션 ID: 이 작업의 앞부분에서 복사한 GUID
-    - ID 애플리케이션 인증서 파일(*.pfx): **C:\Downloads\AppServiceRP\sso.appservice.local.azurestack.external.pfx**
-    - ID 애플리케이션 인증서 파일(*.pfx) 암호: **Pa55w.rd1234pfx**
-    - ARM(Azure Resource Manager) 루트 인증서 파일(*.cer): **C:\Downloads\AppServiceRP\AzureStackCertificationAuthority.cer**
+    - ID アプリケーション ID: このタスクの前半でコピーした GUID
+    - ID アプリケーション証明書ファイル (*.pfx):**C:\Downloads\AppServiceRP\sso.appservice.local.azurestack.external.pfx**
+    - ID アプリケーション証明書ファイル (*.pfx) のパスワード:**Pa55w.rd1234pfx**
+    - Azure Resource Manager (ARM) ルート証明書ファイル (*.cer):**C:\Downloads\AppServiceRP\AzureStackCertificationAuthority.cer**
 
-1. 다음 페이지에서 인증서 파일과 각 파일의 암호를 식별하는 설정을 지정합니다.
+1. 次のページで、証明書ファイルとその対応パスワードが特定されるよう設定を行います。
 
-    - App Service 기본 SSL 인증서 파일(*.pfx): **C:\Downloads\AppServiceRP\_.appservice.local.azurestack.external.pfx**
-    - App Service 기본 SSL 인증서(*.pfx) 암호: **Pa55w.rd1234pfx**
-    - App Service API SSL 인증서 파일(*.pfx): **C:\Downloads\AppServiceRP\api.appservice.local.azurestack.external.pfx**
-    - App Service API SSL 인증서(*.pfx) 암호: **Pa55w.rd1234pfx**
-    - App Service 게시자 인증서 파일(*.pfx): **C:\Downloads\AppServiceRP\ftp.appservice.local.azurestack.external.pfx**
-    - App Service 게시자 SSL 인증서(*.pfx) 암호: **Pa55w.rd1234pfx**
+    - App Service の既定の SSL 証明書ファイル (*.pfx):**C:\Downloads\AppServiceRP\_.appservice.local.azurestack.external.pfx**
+    - App Service の既定の SSL 証明書 (*.pfx) のパスワード:**Pa55w.rd1234pfx**
+    - App Service の API SSL 証明書ファイル (*.pfx):**C:\Downloads\AppServiceRP\api.appservice.local.azurestack.external.pfx**
+    - App Service API SSL 証明書 (*.pfx) のパスワード:**Pa55w.rd1234pfx**
+    - App Service 発行元の証明書ファイル (*.pfx):**C:\Downloads\AppServiceRP\ftp.appservice.local.azurestack.external.pfx**
+    - App Service 発行元の SSL 証明書 (*.pfx) のパスワード:**Pa55w.rd1234pfx**
 
-1. 다음 페이지에서 SQL Server 설정을 지정합니다.
+1. 次のページで、SQL Server の設定を行います。
 
-    - SQL Server 이름: **sqlhost1.local.cloudapp.azurestack.external**
-    - SQL sysadmin 로그인: **SQLAdmin**
-    - SQL sysadmin 암호: **Pa55w.rd1234**
+    - SQL Server 名: **sqlhost1.local.cloudapp.azurestack.external**
+    - SQL sysadmin ログイン:**SQLAdmin**
+    - SQL sysadmin のパスワード:**Pa55w.rd1234**
 
-1. 다음 페이지에서 App Service 배포의 인스턴스 수와 SKU를 지정합니다.
+1. 次のページで、App Service デプロイのインスタンスの数と SKU を指定します。
 
-    - 컨트롤러 역할: **2개 인스턴스 - Standard_A1_v2 - [1개 코어, 2048MB]**
-    - 관리 역할: **1개 인스턴스 - Standard_A2_v2 - [2개 코어, 4096MB]**
-    - 게시자 역할: **1개 인스턴스 - Standard_A1_v2 - [1개 코어, 2048MB]**
-    - 프런트 엔드 역할: **1개 인스턴스 - Standard_A1_v2 - [1개 코어, 2048MB]**
-    - 공유 작업자 역할: **1개 인스턴스 - Standard_A1_v2 - [1개 코어, 2048MB]**
+    - コントローラー ロール:**2 つのインスタンス - Standard_A1_v2 - [1 コア、2048 MB]**
+    - 管理ロール:**1 つのインスタンス - Standard_A2_v2 - [2 コア、4096 MB]**
+    - 発行元ロール:**1 つのインスタンス - Standard_A1_v2 - [1 コア、2048 MB]**
+    - FrontEnd ロール:**1 つのインスタンス - Standard_A1_v2 - [1 コア、2048 MB]**
+    - 共有 worker ロール:**1 つのインスタンス - Standard_A1_v2 - [1 コア、2048 MB]**
 
-1. **다음**을 클릭합니다.
-1. 다음 페이지의 **플랫폼 이미지 선택** 드롭다운 목록에서 **2016 Datacenter - latest** 이미지를 선택하고 **다음**을 클릭합니다.
-1. 다음 페이지에서 배포용으로 아래 관리자 자격 증명을 지정합니다.
+1. **[次へ]** をクリックします。
+1. 次のページの **[プラットフォーム イメージの選択]** ドロップダウン リストで **2016 Datacenter - latest** イメージを選択して、**[次へ]** をクリックします。
+1. 次のページで、デプロイ用の管理者資格情報を以下のように設定します。
 
-    - 작업자 역할 가상 머신 관리자: **SAWorkerAdmin**
-    - 작업자 역할 가상 머신 암호: **Pa55w.rd1234**
-    - 암호 확인: **Pa55w.rd1234**
-    - 기타 역할 가상 머신 관리자: **SAORoleAdmin**
-    - 기타 역할 가상 머신 암호: **Pa55w.rd1234**
-    - 암호 확인: **Pa55w.rd1234**
+    - worker ロールの仮想マシンの管理者:**SAWorkerAdmin**
+    - worker ロールの仮想マシンのパスワード:**Pa55w.rd1234**
+    - パスワードの確認: **Pa55w.rd1234**
+    - 他のロールの仮想マシンの管理者:**SAORoleAdmin**
+    - 他のロールの仮想マシンのパスワード:**Pa55w.rd1234**
+    - パスワードの確認: **Pa55w.rd1234**
 
-1. **다음**을 클릭합니다.
-1. 요약 페이지에서 **배포를 시작하려면 선택하고 [다음]을 클릭하세요.** 체크박스를 클릭하고 배포를 시작하려면 **다음**을 클릭합니다.
+1. **[次へ]** をクリックします。
+1. [概要] ページで **[選択して [次へ] をクリックし、デプロイを開始してください]** チェックボックスをオンにし、デプロイを開始して **[次へ]** をクリックします。
 
-    > **참고:** 설치가 완료될 때까지 기다립니다. 2~3시간 정도 걸릴 수 있습니다.
+    > **注:**  インストールが完了するまで待ちます。 2～3 時間かかる場合があります。
 
-1. 설치가 완료되면 **끝내기**를 클릭합니다.
-
-
-#### 작업 4: App Service 리소스 공급자 설치 유효성 검사
-
-이 작업에서는 다음을 수행합니다.
-
-- App Service 리소스 공급자 설치 유효성 검사
-
-1. **AzSHOST-1**에 연결된 원격 데스크톱 내의 Azure Stack 관리자 포털이 표시된 웹 브라우저 내 허브 메뉴에서 **모든 서비스**를 선택합니다. 그런 다음 **모든 서비스** 블레이드에서 **관리**를 선택하고 서비스 목록에서 **App Service**를 클릭합니다. 
-
-    > **참고:** 브라우저 페이지를 새로 고쳐야 **App Service** 항목이 사용 가능한 상태가 될 수도 있습니다.
-
-1. **App Service** 블레이드의 **필수** 섹션에서 **상태** 레이블 아래에 **모든 역할이 준비됨** 메시지가 표시되는지 확인합니다.
-
-    > **참고:** 모든 역할이 정상적으로 시작될 때까지 기다리세요. 이 경우 15~20분이 더 걸릴 수 있습니다.
-
->**검토**: 이 연습에서는 Azure Stack Hub에서 App Service 리소스 공급자를 설치했습니다.
+1. インストールが完了したら **[終了]** をクリックします。
 
 
-### 연습 2: Azure Stack Hub에서 App Service 리소스 공급자의 관리 작업 살펴보기
+#### <a name="task-4-validate-the-installation-of-the-app-service-resource-provider"></a>タスク 4:App Service リソース プロバイダーのインストールを検証する
 
-이 연습에서는 Azure Stack Hub에서 App Service 리소스 공급자의 관리 작업을 살펴봅니다.
+このタスクでは次のことを行います。
 
-1. App Service 리소스의 확장 기능 살펴보기
-1. App Service 리소스 공급자의 백업 설정 살펴보기
+- App Service リソース プロバイダーのインストールを検証する
 
+1. **AzSHOST-1** へのリモート デスクトップ セッション内で、Web ブラウザーに Azure Stack 管理者ポータルが表示されている状態で、ハブ メニューの **[すべてのサービス]** を選択し、**[すべてのサービス]** ウィンドウで **[管理]** を選択してから、サービスの一覧で **[App Service]** をクリックします。 
 
-### 작업 1: App Service 리소스의 확장 기능 살펴보기
+    > **注:** **[App Service]** エントリを利用できるようにするには、ブラウザー ページを更新しなければならない場合があります。
 
-이 작업에서는 다음을 수행합니다.
+1. **[App Service]** ウィンドウの **[要点]** セクションで、**[状態]** ラベルに "**ロールはいずれも準備ができています**" というメッセージが表示されていることを確認します。
 
-- App Service 리소스의 확장 기능 검토
-- App Service 리소스 공급자의 백업 설정 검토
+    > **注:**  すべてのロールが正常に起動するまで待ちます。 追加で15～20 分かかる場合があります。
 
-1. **AzSHOST-1**에 연결된 원격 데스크톱 세션 내의 Azure Stack 관리자 포털이 표시된 웹 브라우저 내 **App Service** 블레이드에서 **역할**을 클릭합니다.
-1. **App Service | 역할** 블레이드에서 역할 및 해당 인스턴스의 목록을 검토합니다.
-1. **App Service | 역할** 블레이드의 **컨트롤러** 행에서 오른쪽 줄임표 기호를 클릭하고 드롭다운 목록에서 **가상 머신** 항목을 확인합니다.
-
-    > **참고:** 컨트롤러 역할은 가상 머신을 사용하여 구현됩니다. 따라서 App Service 리소스 공급자를 설치할 때 컨트롤러 인스턴스 2개를 선택한 것입니다.
-
-1. **App Service | 역할** 블레이드의 나머지 행에서 오른쪽 줄임표 기호를 클릭하고 드롭다운 목록에서 **ScaleSet** 항목을 확인합니다.
-
-    > **참고:** 기타 모든 역할은 확장 집합을 사용하여 구현되므로 확장이 가능합니다.
-
-1. **App Service | 역할** 블레이드에서 현재 **공유** 작업자 계층에는 웹 작업자 역할만 표시되어 있음을 확인합니다. 
-1. **App Service | 역할** 블레이드 왼쪽의 세로 메뉴에서 **작업자 계층**을 선택합니다.
-1. **App Service | 작업자 계층** 블레이드에서 **+ 추가**를 클릭합니다. 
-1. **만들기** 블레이드에서 사용 가능한 옵션을 검토합니다. 사용 가능한 옵션으로는 **공유**와 **전용** 중 하나를 선택할 수 있는 **컴퓨팅 모드** 드롭다운 목록 등이 있습니다.
-
-    > **참고:** 사용자 지정 소프트웨어가 포함된 다양한 크기의 가상 머신을 선택한 작업자 계층에서 가상 머신으로 배포할 수 있습니다.
-
-1. 아무 항목도 변경하지 않고 **만들기** 블레이드를 닫습니다.
-
-    > **참고:** 프로비전 프로세스는 1시간 넘게 걸릴 수도 있습니다.
+>**レビュー**:この演習では、App Service リソース プロバイダーを Azure Stack Hub にインストールしました。
 
 
-### 작업 2: App Service 리소스 공급자의 백업 설정 살펴보기
+### <a name="exercise-2-explore-management-tasks-of-app-service-resource-provider-on-azure-stack-hub"></a>演習 2:Azure Stack Hub 上の App Service リソース プロバイダーの管理タスクについて学習する
 
-이 작업에서는 다음을 수행합니다.
+この演習では、Azure Stack Hub 上の App Service リソース プロバイダーの管理タスクについて学習します。
 
-- App Service 리소스 공급자의 백업 설정 검토
+1. App Service リソースのスケーリング機能について学習する
+1. App Service リソース プロバイダーのバックアップ設定について学習する
 
-> **참고:** Azure Stack Hub의 App Service 백업에는 다음과 같은 기본 구성 요소가 포함됩니다.
 
-- 리소스 공급자 인프라
-- 리소스 공급자 비밀 
-- 계량 데이터베이스를 호스트하는 SQL Server 인스턴스
-- App Service 파일 공유에 저장된 사용자 워크로드 콘텐츠
+### <a name="task-1-explore-the-scaling-functionality-of-app-service-resources"></a>タスク 1:App Service リソースのスケーリング機能について学習する
 
-    > **참고:** App Service 복구 PowerShell cmdlet을 사용하면 복구 중에 백업에서 리소스 공급자 인프라 구성을 다시 만들 수 있습니다. 복구 프로세스 관련 세부 정보는 [Azure Stack Hub에서 App Service 복구](https://docs.microsoft.com/ko-kr/azure-stack/operator/app-service-recover?view=azs-2008)를 참조하세요.
+このタスクでは次のことを行います。
 
-1. **AzSHOST-1**에 연결된 원격 데스크톱 세션 내의 Azure Stack 관리자 포털이 표시된 웹 브라우저 내 **App Service** 블레이드에서 **비밀**을 클릭합니다.
-1. **App Service \| 비밀** 블레이드에서 **비밀 다운로드**를 클릭한 다음 **저장**을 클릭합니다.
-1. **AzSHOST-1**의 **Downloads** 폴더에 **SystemSecrets.json** 파일이 다운로드되었는지 확인합니다.
+- App Service リソースのスケーリング機能について確認する
+- App Service リソース プロバイダーのバックアップ設定について確認する
 
-    > **참고:** **SystemSecrets.json** 파일을 안전한 위치에 복사하고 비밀을 교체할 때마다 이 프로세스를 반복해야 합니다. 
+1. **AzSHOST-1** へのリモート デスクトップ セッション内で、Web ブラウザーに Azure Stack 管理者ポータルが表示されている状態で、**[App Service]** の **[ロール]** をクリックします。
+1. **[App Service | ロール]** ブレードで、ロールとその対応インスタンスの一覧を確認します。
+1. **[App Service | ロール]** ブレードの **[コントローラー]** 行で、右側にある省略記号をクリックし、 **[仮想マシン]** エントリを確認します。
 
-    > **참고:** **Appservice_hosting** 및 **Appservice_metering** 데이터베이스를 백업할 때는 Azure Backup Server의 SQL Server 유지 관리 계획을 사용하는 것이 좋습니다. 그러나 SQL Server PowerShell 모듈 cmdlet을 사용하여 이러한 데이터베이스를 백업할 수도 있습니다.
+    > **注:**  コントローラー ロールは、仮想マシンによって使用されます。App Service リソース プロバイダーのインストール時に、コントローラーの 2 つのインスタンスが選択されるのはそのためです。
 
-1. **AzSHOST-1**에 연결된 원격 데스크톱 세션 내에서 **sqlhost1.local.cloudapp.azurestack.external**로 연결하는 원격 데스크톱 세션으로 전환합니다. 
-1. **SqlHOST1**에 연결된 원격 데스크톱 세션 내에서 관리자로 Windows PowerShell을 시작합니다.
-1. **SqlHOST1**에 연결된 원격 데스크톱 세션 내의 **관리자: Windows PowerShell** 창에서 다음 명령을 실행하여 App Service 데이터베이스의 로컬 백업을 수행합니다.
+1. **[App Service | ロール]** ブレードの残りの行で、右側にある省略記号をクリックし、ドロップダウン リストの **[ScaleSet]** エントリを確認します。
+
+    > **注:**  他のロールはいずれもスケール セットによって実装されることで、スケーリングが可能となります。
+
+1. **[App Service | ロール]** ブレードで、**共有** worker 階層には現在 Web Worker ロールしかないことを確認します。 
+1. **[App Service | ロール]** ブレードの左側の垂直メニューで、 **[worker 階層]** を選択します。
+1. **[App Service | worker 階層]** ブレードで **[+ 追加]** をクリックします。 
+1. **[作成]** ウィンドウで、**[共有]** と **[専用]** の間で切り替えるための **[コンピューティング モード]** ドロップダウン リストなど、利用可能なオプションを確認します。
+
+    > **注:**  仮想マシンは、カスタム ソフトウェアを使用することで、任意の worker 階層内の仮想マシンとしてさまざまなサイズでデプロイすることができます。
+
+1. 何も変更しないで **[作成]** ウィンドウを閉じます。
+
+    > **注:**  プロビジョニング プロセスには 1 時間以上かかる場合があります。
+
+
+### <a name="task-2-explore-the-backup-settings-of-the-app-service-resource-provider"></a>タスク 2:App Service リソース プロバイダーのバックアップ設定について学習する
+
+このタスクでは次のことを行います。
+
+- App Service リソース プロバイダーのバックアップ設定について確認する
+
+> **注:**  Azure Stack Hub 上の App Service バックアップは、次の主要コンポーネントから構成されます。
+
+- リソース プロバイダー インフラストラクチャ
+- リソース プロバイダー シークレット 
+- 計測データベースをホストするための SQL Server インスタンス
+- App Service ファイル共有に格納されたユーザー ワークロード コンテンツ
+
+    > **注:**  リソース プロバイダーのインフラストラクチャ構成は、App Service リカバリー PowerShell コマンドレットを使用して、復旧中にバックアップから再作成できます。 復旧プロセスの詳細については、「[Azure Stack 上の App Service の復旧](https://docs.microsoft.com/en-us/azure-stack/operator/app-service-recover?view=azs-2008)」を参照してください。
+
+1. **AzSHOST-1** へのリモート デスクトップ セッション内で、Web ブラウザーに Azure Stack 管理者ポータルが表示されている状態で、**[App Service]** ウィンドウの **[シークレット]** をクリックします。
+1. **[App Service \| シークレット]** ブレードで、 **[シークレットのダウンロード]** をクリックしてから **[保存]** をクリックします。
+1. **SystemSecrets.json** ファイルが、**AzSHOST-1** の **[ダウンロード]** フォルダーにダウンロードされたことを確認します。
+
+    > **注:** **SystemSecrets.json** ファイルは安全な場所にコピーしてください。以後シークレットがローテーションされるたびにこのプロセスを繰り返す必要があります。 
+
+    > **注:** **Appservice_hosting** および **Appservice_metering** データベースをバックアップするときの推奨される方法は、Azure Backup Server の SQL Server メンテナンス プランを使用することですが、SQL Server PowerShell モジュール コマンドレットを使用してバックアップすることもできます。
+
+1. **AzSHOST-1** へのリモート デスクトップ セッション内で、**sqlhost1.local.cloudapp.azurestack.external** へのリモート デスクトップ セッションに切り替えます。 
+1. **SqlHOST1** へのリモート デスクトップ セッション内で、管理者として Windows PowerShell を起動します。
+1. **SqlHOST1** へのリモート デスクトップ セッション内で、 **[管理者: Windows PowerShell]** プロンプトから以下のコマンドを実行して、App Service データベースのローカル バックアップを実行します。
 
     ```powershell
     $date = Get-Date -Format 'yyyyMMdd'
@@ -500,11 +505,11 @@ lab:
     Backup-SqlDatabase -ServerInstance 'localhost' -Database 'appservice_metering' -BackupFile "C:\Backups\appservice_metering_$date.bak" -CopyOnly
     ```
 
-    > **참고:** App Service는 지정된 파일 공유에 테넌트 앱 정보를 저장합니다. 파일 공유를 백업할 때는 Azure Backup Server를 사용하는 것이 좋습니다. 그러나 어떤 파일 복사 유틸리티든 이러한 용도로 사용할 수 있습니다.
+    > **注:**  App Service では、指定したファイル共有にテナント アプリの情報が格納されます。 ファイル共有をバックアップする際のアプローチとして Azure Backup Server の使用が推奨されますが、このようなバックアップにおいては任意のファイル コピー ユーティリティを使用することもできます。
 
-1. **AzSHOST-1**에 연결된 원격 데스크톱 세션으로 전환합니다. 그런 다음 **AzSHOST-1**에 연결된 원격 데스크톱 세션 내의 Azure Stack 관리자 포털이 표시된 웹 브라우저 내 **App Service** 블레이드에서 **시스템 구성**을 클릭합니다.
-1. Azure Stack 관리자 포털이 표시된 웹 브라우저 내 **App Service \| 시스템 구성** 블레이드에서 **파일 공유**의 전체 경로(**\\\\appservicefileshare.local.cloudapp.azurestack.external\\websites**)를 확인합니다.
-1. **AzSHOST-1**에 연결된 원격 데스크톱 세션으로 전환한 다음 **관리자:  Windows PowerShell** 창에서 다음 명령을 실행하여 App Service 파일 공유의 콘텐츠를 로컬 파일 시스템에 복사합니다.
+1. **AzSHOST-1** へのリモート デスクトップ セッションに切り替え、**AzSHOST-1** へのリモート デスクトップ セッション内で、Web ブラウザーに Azure Stack 管理者ポータルが表示されている状態で、**[App Service]** ウィンドウの **[システム構成]** をクリックします。
+1. Web ブラウザーに Azure Stack 管理者ポータルが表示されている状態で、 **[App Service \| システム構成]** ブレードに表示される **ファイル共有** の完全なパスを記録しておきます ( **\\\\appservicefileshare.local.cloudapp.azurestack.external\\websites**)
+1. **AzSHOST-1** へのリモート デスクトップ セッションに切り替え、 **[管理者: Windows PowerShell]** ウィンドウで以下のコマンドを実行して、App Service ファイル共有のコンテンツをローカル ファイル システムにコピーします。
 
     ```powershell
     $source = '\\appservicefileshare.local.cloudapp.azurestack.external\websites'
@@ -520,117 +525,117 @@ lab:
     Remove-PSDrive -Name 'S'
     ```
 
->**검토**: 이 연습에서는 Azure Stack Hub에서 App Service 리소스 공급자의 관리 작업을 살펴보았습니다.
+>**レビュー**:この演習では、Azure Stack Hub 上の App Service リソース プロバイダーの管理タスクについて学習しました。
 
 
-### 연습 3: Azure Stack Hub에서 App Service 리소스 제공
+### <a name="exercise-3-deliver-app-service-resources-in-azure-stack-hub"></a>演習 3:App Service リソースを Azure Stack Hub に提供する
 
-이 연습에서는 Azure Stack Hub 사용자에게 App Service 리소스를 제공합니다.
+この演習では、App Service リソースを Azure Stack Hub ユーザーに提供します。
 
-1. 사용자에게 App Service 리소스 제공(클라우드 운영자 역할)
-1. 웹앱 만들기(사용자 역할)
-
-
-### 작업 1: 사용자에게 App Service 리소스 제공(클라우드 운영자 역할)
-
-이 작업에서는 다음을 수행합니다.
-
-- 사용자에게 App Service 리소스 제공(클라우드 운영자 역할)
-
-1. **AzS-HOST1**에 연결된 원격 데스크톱 세션 내에서 [Azure Stack Hub 관리자 포털](https://adminportal.local.azurestack.external/)이 표시된 브라우저 창으로 전환합니다.
-1. Azure Stack Hub 관리자 포털이 표시된 웹 브라우저 창에서 **+ 리소스 만들기**를 클릭합니다.
-1. **새로 만들기** 블레이드에서 **제안+요금제**를 클릭한 다음 **요금제**를 클릭합니다.
-1. **새 요금제** 블레이드의 **기본** 탭에서 다음 설정을 지정합니다.
-
-    - 표시 이름: **app-service-plan1**
-    - 리소스 이름: **app-service-plan1**
-    - 리소스 그룹: 새 리소스 그룹 **app-service-plans-RG**의 이름.
-
-1. **다음: 서비스 >** 를 클릭합니다.
-1. **새 요금제** 블레이드의 **서비스** 탭에서 **Microsoft.Web** 체크박스를 선택합니다.
-1. **다음: 할당량>** 을 클릭합니다.
-1. **새 요금제** 블레이드의 **할당량** 탭에서 **새로 만들기**를 선택하고 **만들기** 블레이드에서 다음 설정을 지정한 후에 **확인**을 클릭합니다.
-
-    - 이름: **app-service-quota1**
-    - App Service 요금제: **사용자 지정** **20**
-    - 공유 App Service 요금제: **사용자 지정** **10**
-    - 전용 App Service 요금제: **사용자 지정** **10**
-    - 가격 책정 SKU: **사용자 지정** **2개 선택됨**(**무료** 및 **공유**)
-    - 사용량 요금제: **사용**
-
-    >**참고**: 사용량 요금제 모델에서 Azure Functions를 제공하려면 공유 웹 작업자를 배포해야 합니다.
-
-1. **새 요금제** 블레이드의 **할당량** 탭으로 돌아와서 **검토 + 만들기**를 클릭한 다음 **만들기**를 클릭합니다.
-
-    >**참고**: 배포가 완료될 때까지 기다립니다. 몇 초면 끝납니다.
-
-1. **AzS-HOST1**에 연결된 원격 데스크톱 세션 내의 Azure Stack Hub 관리자 포털이 표시된 웹 브라우저 창에서 **새로 만들기** 블레이드로 돌아와서 **제안**을 클릭합니다.
-1. **새 제안 만들기** 블레이드의 **기본** 탭에서 다음 설정을 지정합니다.
-
-    - 표시 이름: **app-service-offer1**
-    - 리소스 이름: **app-service-offer1**
-    - 리소스 그룹: **app-service-offers-RG**
-    - 이 제안을 공개로 설정: **예**
-
-1. **다음: 기본 요금제 >** 를 클릭합니다. 
-1. **새 제안 만들기** 블레이드의 **기본 요금제** 탭에서 **app-service-plan1** 항목 옆의 체크박스를 선택합니다.
-1. **다음: 추가 요금제 >** 를 클릭합니다.
-1. **추가 요금제** 설정은 기본값으로 유지하고 **검토 + 만들기**를 클릭한 다음 **만들기**를 클릭합니다.
-
-    >**참고**: 배포가 완료될 때까지 기다립니다. 몇 초면 끝납니다.
+1. (クラウド オペレーターとして) ユーザーが App Service リソースを使用できるようにする
+1. (ユーザーとして) Web アプリを作成する
 
 
-#### 작업 2: 웹앱 만들기(사용자 역할)
+### <a name="task-1-make-app-service-resources-available-to-users-as-a-cloud-operator"></a>タスク 1:(クラウド オペレーターとして) ユーザーが App Service リソースを使用できるようにする
 
-이 작업에서는 다음을 수행합니다.
+このタスクでは次のことを行います。
 
-- 테스트 사용자 계정 만들기
-- 웹앱 만들기(사용자 역할)
+- (クラウド オペレーターとして) ユーザーが App Service リソースを使用できるようにする
 
-1. **AzS-HOST1**에 연결된 원격 데스크톱 세션 내에서 **시작**을 클릭하고 시작 메뉴에서 **Windows 관리 도구**를 클릭합니다. 그런 다음 관리 도구 목록에서 **Active Directory 관리 센터**를 두 번 클릭합니다.
-1. **Active Directory 관리 센터** 콘솔에서 **azurestack(로컬)** 을 클릭합니다.
-1. 세부 정보 창에서 **사용자** 컨테이너를 두 번 클릭합니다.
-1. **작업** 창의 **사용자** 섹션에서 **새로 만들기 -> 사용자**를 클릭합니다.
-1. **사용자 만들기** 창에서 다음 설정을 지정하고 **확인**을 클릭합니다. 
+1. **AzS-HOST1** へのリモート デスクトップ セッション内で、[Azure Stack Hub 管理者ポータル](https://adminportal.local.azurestack.external/)が表示されているブラウザーの画面に切り替えます。
+1. Azure Stack Hub 管理者ポータルが表示されている Web ブラウザーのウィンドウで、**[+ リソースの作成]** をクリックします。
+1. **[新規作成]** ウィンドウで、**[オファーとプラン]** をクリックしてから **[プラン]** をクリックします。
+1. **[新しいプラン]** ウィンドウの **[基本]** タブで、次のように設定を行います。
 
-    - 전체 이름: **T1U1**
-    - 사용자 UPN 로그온: **t1u1@azurestack.local**
-    - 사용자 SamAccountName: **azurestack\t1u1**
-    - 암호: **Pa55w.rd**
-    - 암호 옵션: **기타 암호 옵션 -> 암호 사용 기간 제한 없음**
+    - 表示名: **app-service-plan1**
+    - リソース名: **app-service-plan1**
+    - リソース グループ: 新しいリソース グループの名前 **app-service-plans-RG**
 
-1. **AzS-HOST1**에 연결된 원격 데스크톱 세션 내에서 웹 브라우저의 InPrivate 세션을 시작합니다.
-1. 웹 브라우저 창에서 [Azure Stack Hub 사용자 포털](https://portal.local.azurestack.external)로 이동하여 **Pa55w.rd** 암호를 사용해 **t1u1@azurestack.local**로 로그인합니다.
-1. Azure Stack Hub 사용자 포털의 대시보드에서 **구독 가져오기** 타일을 클릭합니다.
-1. **구독 가져오기** 블레이드의 **이름** 텍스트 상자에 **t1u1-app-service-subscription1**을 입력합니다.
-1. 제안 목록에서 **app-service-offer1**을 선택하고 **만들기**를 클릭합니다.
-1. **구독이 생성되었습니다. 구독을 사용해서 시작하려면 포털을 새로 고쳐야 합니다.** 메시지가 표시되면 **새로 고침**을 클릭합니다. 
-1. Azure Stack Hub 테넌트 포털의 허브 메뉴에서 **+ 리소스 만들기**를 클릭합니다.
-1. 서비스 목록에서 **웹 + 모바일**을 클릭한 다음 **웹앱**을 클릭합니다. 
-1. **웹앱** 블레이드에서 다음 설정을 지정합니다.
+1. **[次へ: サービス >]** をクリックします。
+1. **[新しいプラン]** ウィンドウの **[サービス]** タブで、**[Microsoft.Web]** チェックボックスをオンにします。
+1. **[次へ: クォータ >]** をクリックします。
+1. **[新しいプラン]** ウィンドウの **[クォータ]** タブで **[新規作成]** を選択し、**[作成]** ウィンドウで以下のように設定してから **[OK]** をクリックします。
 
-    - 구독: **t1u1-app-service-subscription1**
-    - 앱 이름: **t1u1webapp1**
-    - 리소스 그룹: 새 리소스 그룹 **webapps-RG**의 이름.
+    - 名前: **app-service-quota1**
+    - App Service プラン:**カスタム** **20**
+    - 共有 App Service プラン:**カスタム** **10**
+    - 専用 App Service プラン:**カスタム** **10**
+    - 価格 SKU:**カスタム** **2 つ選択** (**無料** と **共有**)
+    - 従量課金プラン **有効**
 
-1. **웹앱** 블레이드에서 **App Service 계획/위치**를 클릭하고 **App Service 계획** 블레이드에서 **+ 새로 만들기**를 클릭합니다. 
-1. **새 App Service 계획** 블레이드에서 다음 설정을 지정합니다.
+    >**注**:従量課金プラン モデルで Azure Functions を提供するには、共有 Web worker をデプロイする必要があります。
 
-    - App Service 계획: **appserviceplan1**
-    - 위치: **로컬**
+1. **[新しいプラン]** ウィンドウの **[クォータ]** タブに戻り、**[確認して作成]** をクリックしてから **[作成]** をクリックします。
 
-1. **새 App Service 계획** 블레이드에서 **가격 책정 계층**을 클릭합니다.
-1. **사양 선택기** 블레이드에서 **F1** 가격 책정 계층을 선택하고 **적용**을 클릭합니다.
-1. **새 App Service 계획** 블레이드로 돌아와서 **확인**을 클릭합니다.
-1. **웹앱** 블레이드로 돌아와서 **만들기**를 클릭합니다.
+    >**注**:デプロイが完了するまで待ちます。 通常は数秒で完了します。
 
-    >**참고**: 배포가 완료될 때까지 기다립니다. 1분도 걸리지 않습니다.
+1. **AzS-HOST1** へのリモート デスクトップ セッション内で、Web ブラウザーの画面に Azure Stack Hub 管理者ポータルが表示されている状態で、**[新規作成]** ウィンドウに戻って **[オファー]** クリックします。
+1. **[新しいオファーの作成]** ウィンドウの **[基本]** タブで、次のように設定を行います。
 
-1. **AzS-HOST1**에 연결된 원격 데스크톱 세션 내의 Azure Stack Hub 사용자 포털이 표시된 웹 브라우저 InPrivate 세션 내 허브 메뉴에서 **모든 리소스**를 클릭합니다.
-1. **모든 리소스** 블레이드의 구독 필터 드롭다운 목록에서 **t1u1-app-service-subscription1** 항목을 선택하고 **새로 고침**을 클릭합니다.
-1. **모든 리소스** 블레이드의 리소스 목록에서 **t1u1webapp1** 항목을 클릭합니다.
-1. **t1u1webapp1** 블레이드에서 **찾아보기**를 클릭합니다.
+    - 表示名: **app-service-offer1**
+    - リソース名: **app-service-offer1**
+    - リソース グループ: **app-service-offers-RG**
+    - このオファーをパブリックに設定する:**はい**
 
-    >**참고**: 그러면 다른 브라우저 탭이 열리고 새로 프로비전한 웹앱의 기본 홈 페이지가 표시됩니다.
+1. **[次へ: 基本プラン >]** をクリックします。 
+1. **[新しいオファーの作成]** ウィンドウの **[基本プラン]** タブで、**[app-service-plan1]** エントリの横にあるチェックボックスをオンにします。
+1. **[次へ: アドオン プラン >]** をクリックします。
+1. **[アドオン プラン]** の設定は既定値にしたまま、**[確認して作成]** をクリックしてから **[作成]** をクリックします。
 
->**검토**: 이 연습에서는 App Service를 사용자에게 제공했으며 테넌트 사용자로 웹앱을 만들었습니다.
+    >**注**: デプロイが完了するまで待ちます。 通常は数秒で完了します。
+
+
+#### <a name="task-2-create-a-web-app-as-a-user"></a>タスク 2:(ユーザーとして) Web アプリを作成する
+
+このタスクでは次のことを行います。
+
+- テスト用のユーザー アカウントを作成する
+- (ユーザーとして) Web アプリを作成する
+
+1. **AzS-HOST1** へのリモート デスクトップ セッション内で **[スタート]** をクリックし、スタート メニューから **[Windows 管理ツール]** をクリックして、管理ツールの一覧で **[Active Directory 管理センター]** をダブルクリックします。
+1. **[Active Directory 管理センター]** コンソールで **[azurestack (ローカル)]** をクリックします。
+1. 詳細ペインで **[ユーザー]** コンテナーをダブルクリックします。
+1. **[タスク]** ペインの **[ユーザー]** セクションで、**[新規作成] > [ユーザー]** の順にクリックします。
+1. **[ユーザーの作成]** ウィンドウで、次のように設定してから **[OK]** をクリックします。 
+
+    - 完全名:**T1U1**
+    - ユーザー UPN ログオン: **t1u1@azurestack.local**
+    - ユーザー SamAccountName: **azurestack\t1u1**
+    - パスワード: **Pa55w.rd**
+    - パスワード オプション: **[その他のパスワード オプション] -> [パスワードを無期限にする]**
+
+1. **AzS-HOST1** へのリモート デスクトップ セッション内で、Web ブラウザーの InPrivate セッションを開始します。
+1. Web ブラウザー ウィンドウで [Azure Stack Hub ユーザー ポータル](https://portal.local.azurestack.external)に移動し、 **t1u1@azurestack.local** とパスワード **Pa55w.rd** でサインインします。
+1. Azure Stack Hub ユーザー ポータルのダッシュボードで、**[サブスクリプションの取得]** タイルをクリックします。
+1. **[サブスクリプションの取得]** ウィンドウの **[名前]** テキスト ボックスに「**t1u1-app-service-subscription1**」と入力します。
+1. オファーの一覧で **app-service-offer1** を選択し、**[作成]** をクリックします。
+1. メッセージ "**サブスクリプションが作成されました。サブスクリプションの使用を開始するには、ポータルを更新する必要があります**" で、 **[最新の情報に更新]** をクリックします。 
+1. Azure Stack Hub テナント ポータルのハブ メニューで、**[+ リソースの作成]** をクリックします。
+1. サービスの一覧で、**[Web + モバイル]** をクリックしてから **[Web アプリ]** をクリックします。 
+1. **[Web アプリ]** ウィンドウで、次のように設定します。
+
+    - サブスクリプション: **t1u1-app-service-subscription1**
+    - アプリ名: **t1u1webapp1**
+    - リソース グループ: 新しいリソース グループの名前 **webapps-RG**
+
+1. **[Web アプリ]** ウィンドウで **[App Service プラン/場所]** をクリックしてから、**[App Service プラン]** ウィンドウで **[+ 新規作成]** をクリックします。 
+1. **[新しい App Service プラン]** ウィンドウで、次のように設定します。
+
+    - App Service プラン: **appserviceplan1**
+    - 場所: **ローカル**
+
+1. **[新しい App Service プラン]** ウィンドウで **[価格レベル]** をクリックします。
+1. **[スペックの選択]** ウィンドウで、**[F1]** 価格レベルを選択して **[適用]** をクリックします。
+1. **[新しい App Service プラン]** ウィンドウに戻って **[OK]** をクリックします。
+1. **[Web アプリ]** ウィンドウに戻って **[作成]** をクリックします。
+
+    >**注**:デプロイが完了するまで待ちます。 これに要する時間は 1 分未満です。
+
+1. **AzS-HOST1** へのリモート デスクトップ セッション内で、Web ブラウザーの InPrivate セッションに Azure Stack Hub ユーザー ポータルが表示されている状態で、ハブ メニューの **[すべてのリソース]** を選択します。
+1. **[すべてのリソース]** ウィンドウのサブスクリプション フィルター ドロップダウン リストで、**t1u1-app-service-subscription1** エントリを選択してから **[更新]** をクリックします。
+1. **[すべてのリソース]** ウィンドウのリソースの一覧で、**t1u1webapp1** エントリをクリックします。
+1. **t1u1webapp1** のウィンドウで **[参照]** をクリックします。
+
+    >**注**:これで別のブラウザーが開き、新たにプロビジョニングした Web アプリの既定のホーム ページが表示されます。
+
+>**レビュー**:この演習では、App Service をユーザーが利用できるように設定したほか、Web アプリをテナント ユーザーとして作成しました。

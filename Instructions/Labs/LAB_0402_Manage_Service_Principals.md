@@ -1,109 +1,114 @@
 ---
 lab:
-    title: '랩: Azure Stack Hub에서 서비스 주체 관리'
-    module: '모듈 4: ID 및 액세스 관리'
+  title: ラボ:Azure Stack Hub でサービス プリンシパルを管理する
+  module: 'Module 4: Manage Identity and Access'
+ms.openlocfilehash: 771acee127d4c1ed07873c436cf5516343eaf98c
+ms.sourcegitcommit: 3ce6441f824c1ac2b22159d6830eba55dba5ba66
+ms.translationtype: HT
+ms.contentlocale: ja-JP
+ms.lasthandoff: 03/01/2022
+ms.locfileid: "139251661"
 ---
+# <a name="lab---manage-service-principals-in-azure-stack-hub"></a>ラボ - Azure Stack Hub でサービス プリンシパルを管理する
+# <a name="student-lab-manual"></a>受講生用ラボ マニュアル
 
-# 랩 - Azure Stack Hub에서 서비스 주체 관리
-# 학생 랩 매뉴얼
+## <a name="lab-dependencies"></a>ラボの依存関係
 
-## 랩 종속성
+- なし
 
-- 없음
+## <a name="estimated-time"></a>推定所要時間
 
-## 예상 소요 시간
+30 分
 
-30분
+## <a name="lab-scenario"></a>ラボのシナリオ
 
-## 랩 시나리오
+あなたは Azure Stack Hub 環境のオペレーターとして、 社内開発したアプリケーションを使用して Azure Stack Hub を管理しようと計画しています。 このアプリケーションが認証されるには、サービス プリンシパルを作成し、既定のプロバイダー サブスクリプションのもとでこれを共同作成者ロールに割り当てる必要があります。
 
-여러분은 Azure Stack Hub 환경의 운영자입니다. 내부에서 개발한 애플리케이션을 사용하여 Azure Stack Hub를 관리하려고 합니다. 애플리케이션이 인증을 할 수 있도록 서비스 주체를 만들어 기본 공급자 구독의 Contributor 역할에 할당해야 합니다.
+>**注**:アプリケーションのリソースのデプロイや構成を Azure Resource Manager を介して行う必要がある場合は、そのアプリケーションをその ID で表す必要があります。 ユーザー プリンシパルと呼ばれているセキュリティ プリンシパルでユーザーが表されるように、アプリはサービス プリンシパルで表されます。 サービス プリンシパルは、開発者が開発するアプリの ID となり、開発者は必要なアクセス許可のみをそのアプリに委任することができます。
 
->**참고**: Azure Resource Manager를 통해 리소스를 배포하거나 구성해야 하는 애플리케이션은 자체 ID로 표시되어야 합니다. 사용자가 보안 주체인 사용자 계정으로 표시되는 것처럼, 앱은 서비스 주체로 표시됩니다. 서비스 주체는 앱용 ID를 제공하므로 앱에 필요한 권한만 위임할 수 있습니다.
+アプリでは認証時に資格情報を提示する必要があります。 この認証は、次の 2 つの要素で構成されます。
 
-앱은 인증 중에 자격 증명을 제공해야 합니다. 이 인증 과정에서는 두 가지 요소가 사용됩니다.
+- アプリケーション ID。クライアント ID と呼ばれることもあります。 Active Directory テナント内でのそのアプリの登録を一意に識別する GUID です。
+- アプリケーション ID に関連付けられているシークレット。 クライアント シークレット文字列 (パスワードに相当) を生成することも、X509 証明書を指定することもできます
 
-- 애플리케이션 ID - 클라이언트 ID라고도 합니다. GUID - Active Directory 테넌트에서 앱 등록을 고유하게 식별하는 데 사용됩니다.
-- 애플리케이션 ID와 연결된 비밀. 클라이언트 암호 문자열(암호에 해당함)을 생성할 수도 있고 X509 인증서를 지정할 수도 있습니다.
+このラボでは、シークレットを使用します。 証明書を使用した認証について詳しくは、「[アプリ ID を使用して Azure Stack Hub リソースにアクセスする](https://docs.microsoft.com/en-us/azure-stack/operator/azure-stack-create-service-principals?view=azs-2008&tabs=az1%2Caz2&pivots=state-disconnected)」を参照してください。
 
-이 랩에서는 암호를 사용합니다. 인증서를 사용하는 인증 관련 세부 정보는 [앱 ID를 사용하여 Azure Stack Hub 리소스 액세스](https://docs.microsoft.com/ko-kr/azure-stack/operator/azure-stack-create-service-principals?view=azs-2008&tabs=az1%2Caz2&pivots=state-disconnected)를 참조하세요.
+## <a name="objectives"></a>目標
 
-## 목표
+このラボを完了すると、次のことができるようになります。
 
-이 랩을 완료하면 다음을 수행할 수 있습니다.
+- Azure Stack Hub AD FS 統合シナリオでサービス プリンシパルを作成して管理する
 
-- Azure Stack Hub AD FS 통합 시나리오에서 서비스 주체 만들기 및 관리
+## <a name="lab-environment"></a>ラボ環境 
 
-## 랩 환경 
+このラボでは、Active Directory フェデレーション サービス (AD FS) (ID プロバイダーとしてバックアップされた Active Directory) に統合された ADSK インスタンスを使用します。 
 
-이 랩에서는 AD FS(Active Directory Federation Services)와 통합된 ASDK 인스턴스(ID 공급자로 백업된 Active Directory)를 사용합니다. 
+ラボ環境は、次のコンポーネントから構成されています。
 
-랩 환경에는 다음과 같은 구성 요소가 포함됩니다.
+- 次のアクセス ポイントを持つ、**AzS-HOST1** サーバーで実行されている ASDK デプロイ。
 
-- 다음 액세스 지점을 사용하여 **AzS-HOST1** 서버에서 실행되는 ASDK 배포:
+  - 管理者ポータル: https://adminportal.local.azurestack.external
+  - 管理者の ARM エンドポイント: https://adminmanagement.local.azurestack.external
+  - ユーザー ポータル: https://portal.local.azurestack.external
+  - ユーザーの ARM エンドポイント: https://management.local.azurestack.external
 
-  - 관리자 포털: https://adminportal.local.azurestack.external
-  - 관리자 ARM 엔드포인트: https://adminmanagement.local.azurestack.external
-  - 사용자 포털: https://portal.local.azurestack.external
-  - 사용자 ARM 엔드포인트: https://management.local.azurestack.external
+- 管理ユーザー:
 
-- 관리자:
+  - ASDK クラウド オペレーターのユーザー名: **CloudAdmin@azurestack.local**
+  - ASDK クラウド オペレーターのパスワード:**Pa55w.rd1234**
+  - ASDK ホスト管理者のユーザー名: **AzureStackAdmin@azurestack.local**
+  - ASDK ホスト管理者のパスワード:**Pa55w.rd1234**
 
-  - ASDK 클라우드 운영자 사용자 이름: **CloudAdmin@azurestack.local**
-  - ASDK 클라우드 운영자 암호: **Pa55w.rd1234**
-  - ASDK 호스트 관리자 사용자 이름: **AzureStackAdmin@azurestack.local**
-  - ASDK 호스트 관리자 암호: **Pa55w.rd1234**
-
-이 랩에서 설명하는 방식은 Azure Stack Hub AD FS 통합 시나리오용입니다. Azure Active Directory(Azure AD)를 ID 공급자로 사용하는 경우 서비스 주체 기반 인증을 구현하는 방식 관련 세부 정보는 [앱 ID를 사용하여 Azure Stack Hub 리소스 액세스](https://docs.microsoft.com/ko-kr/azure-stack/operator/azure-stack-create-service-principals?view=azs-2008&tabs=az1%2Caz2&pivots=state-connected)를 참조하세요.
-
-
-### 연습 1: Azure Stack Hub에서 서비스 주체 만들기 및 구성
-
-이 연습에서는 권한 있는 엔드포인트로의 PowerShell 원격 세션을 설정하여 서비스 주체를 만든 다음 Azure Stack Hub 관리자 포털을 사용하여 해당 서비스 주체에 Contributor 역할을 할당합니다. 이 연습에서는 다음 작업을 수행합니다.
-
-1. 서비스 주체 만들기
-1. 서비스 주체에 Contributor 역할 할당
+このラボで取り上げるアプローチは、AD FS 統合シナリオに特有のものです。 Azure Active Directory (Azure AD) を ID プロバイダーとして使用する際に、サービス プリンシパル ベースの認証を導入する方法については、「[アプリ ID を使用して Azure Stack Hub リソースにアクセスする](https://docs.microsoft.com/en-us/azure-stack/operator/azure-stack-create-service-principals?view=azs-2008&tabs=az1%2Caz2&pivots=state-connected)」を参照してください。
 
 
-#### 작업 1: 서비스 주체 만들기
+### <a name="exercise-1-create-and-configure-a-service-principal-in-azure-stack-hub"></a>演習 1:Azure Stack Hub でサービス プリンシパルを作成して構成する
 
-이 작업에서는 다음을 수행합니다.
+この演習では、特権エンドポイントへの PowerShell リモート セッションを確立してサービス プリンシパルを作成し、Azure Stack Hub 管理者ポータルを使用してこれを共同作成者ロールに割り当てます。 演習は次のタスクで構成されています。
 
-- PowerShell을 통해 권한 있는 엔드포인트에 연결하여 서비스 주체 만들기
+1. サービス プリンシパルの作成
+1. サービス プリンシパルに共同作成者ロールを割り当てる
 
-1. 필요한 경우 다음 자격 증명을 사용하여 **AzS-HOST1**에 로그인합니다.
 
-    - 사용자 이름: **AzureStackAdmin@azurestack.local**
-    - 암호: **Pa55w.rd1234**
+#### <a name="task-1-create-a-service-principal"></a>タスク 1:サービス プリンシパルを作成する
 
-1. **AzS-HOST1**에 연결된 원격 데스크톱 세션 내에서 관리자로 PowerShell 7을 시작합니다.
-1. **관리자: C:\Program Files\PowerShell\7\pwsh.exe** 창에서 다음 명령을 실행하여 권한 있는 엔드포인트에 대한 PowerShell 원격 세션을 설정합니다.
+このタスクでは次のことを行います。
+
+- PowerShell を介して特権エンドポイントに接続し、サービス プリンシパルを作成する
+
+1. 必要であれば、次の資格情報を使用して **AzS-HOST1** にサインインします。
+
+    - ユーザー名: **AzureStackAdmin@azurestack.local**
+    - パスワード: **Pa55w.rd1234**
+
+1. **AzS-HOST1** へのリモート デスクトップ セッションで、管理者として Windows PowerShell を開始します。
+1. **[管理者: Windows PowerShell]** ウィンドウで次のように実行して、特権エンドポイントへの PowerShell リモート処理セッションを確立します。
 
     ```powershell
     $session = New-PSSession -ComputerName AzS-ERCS01 -ConfigurationName PrivilegedEndpoint
     ```
 
-1. **관리자: C:\Program Files\PowerShell\7\pwsh.exe** 창에서 다음 명령을 실행하여 새 앱 등록(및 서비스 주체 개체)을 만든 다음 **$spObject** 변수에 앱 등록의 참조를 저장합니다.
+1. **[管理者: Windows PowerShell]** ウィンドウで次のように実行して、新しいアプリの登録 (およびサービス プリンシパル オブジェクト) を作成し、それに対する参照を **$spObject** 変数に格納します。
 
     ```powershell
     $spObject = Invoke-Command -Session $session -ScriptBlock {New-GraphApplication -Name 'azsmgmt-app1' -GenerateClientSecret}
     ```
 
-1. **관리자: C:\Program Files\PowerShell\7\pwsh.exe** 창에서 다음 명령을 실행하여 Azure Stack Hub 스탬프 정보를 검색한 다음 **$azureStackInfo** 변수에 해당 스탬프의 참조를 저장합니다.
+1. **[管理者: Windows PowerShell]** ウィンドウで次のように実行して、Azure Stack Hub のスタンプ情報を取得し、それに対する参照を **$azureStackInfo** 変数に格納します。
 
     ```powershell
     $azureStackInfo = Invoke-Command -Session $session -ScriptBlock {Get-AzureStackStampInformation}
     ```
 
-1. **관리자: C:\Program Files\PowerShell\7\pwsh.exe** 창에서 다음 명령을 실행하여 권한 있는 엔드포인트에 대한 PowerShell 원격 세션을 종료합니다.
+1. **[管理者: Windows PowerShell]** ウィンドウで次のように実行して、特権エンドポイントへの PowerShell リモート処理セッションを終了します。
 
     ```powershell
     $session | Remove-PSSession
     ```
 
-    >**참고**: 일반적으로는 **Close-PrivilegedEndpoint** cmdlet을 사용하여 권한 있는 엔드포인트 세션을 닫아야 합니다. 하지만 이 랩에서는 이 방식을 따르지 않습니다. 세션 기록 로그를 호스트하는 파일 공유를 설정할 필요 없이 작업을 간편하게 수행할 수 있도록 하기 위해서입니다.
+    >**注**:通常、特権エンドポイント セッションを終了するには **Close-PrivilegedEndpoint** コマンドレットを使用しますが、 そのためにはファイル共有を設定してセッション トランスクリプト ログをホストしなくてはなりません。この演習では内容を簡素化するため、この正規の手順は実行しません。
 
-1. **관리자: C:\Program Files\PowerShell\7\pwsh.exe** 창에서 다음 명령을 실행하여 이 작업 앞부분에서 검색한 Azure Stack Hub 스탬프 정보를 사용해 서비스 주체를 구성하는 데 사용할 변수 값을 설정합니다. 이때 각 변수가 Azure Resource Manager 사용자 작업에 사용되는 Azure Stack Hub 엔드포인트, Graph API에 액세스하는 데 사용되는 OAuth 토큰을 가져올 대상 그룹, 그리고 ID 공급자의 GUID를 참조하도록 값을 설정해야 합니다.
+1. **[管理者: Windows PowerShell]** ウィンドウで次のように実行し、このタスクで前に取得した Azure Stack Hub スタンプ情報を使用して、サービス プリンシパルを構成するための変数の値を設定します。その参照先は、それぞれ、Azure Resource Manager ユーザー操作用の Azure Stack Hub エンドポイント、Graph API へのアクセスに使用する OAuth トークンを取得するための対象者、ID プロバイダーの GUID です。
 
     ```powershell
     $armUseEndpoint = $azureStackInfo.TenantExternalEndpoints.TenantResourceManager
@@ -111,13 +116,13 @@ lab:
     $tenantID = $azureStackInfo.AADTenantID
     ```
 
-1. **관리자: C:\Program Files\PowerShell\7\pwsh.exe** 창에서 다음 명령을 실행하여 Azure Stack Hub 사용자 환경을 등록 및 설정합니다.
+1. **[管理者: Windows PowerShell]** ウィンドウで次のように実行して、Azure Stack Hub ユーザー環境を登録および設定します。
 
     ```powershell
     Add-AzEnvironment -Name 'AzureStackUser' -ArmEndpoint $armUseEndpoint
     ```
 
-1. **관리자: C:\Program Files\PowerShell\7\pwsh.exe** 창에서 다음 명령을 실행하여 AzureStackUser 환경에 서비스 주체로 로그인합니다.
+1. **[管理者: Windows PowerShell]** ウィンドウで次のように実行して、サービス プリンシパルとして AzureStackUser 環境にサインインします。
 
     ```powershell
     $securePassword = $spObject.ClientSecret | ConvertTo-SecureString -AsPlainText -Force
@@ -125,21 +130,21 @@ lab:
     $spUserSignIn = Connect-AzAccount -Environment 'AzureStackUser' -ServicePrincipal -Credential $credential -TenantId $tenantID
     ```
 
-1. **관리자: C:\Program Files\PowerShell\7\pwsh.exe** 창에서 다음 명령을 실행하여 정상적으로 로그인되었는지 확인합니다.
+1. **[管理者: Windows PowerShell]** ウィンドウで次のように実行して、サインインが成功したことを確認します。
 
     ```powershell
     $spUserSignIn
     ```
 
-1. **관리자: C:\Program Files\PowerShell\7\pwsh.exe** 창에서 다음 명령을 실행하여 현재 인증 컨텍스트를 제거합니다.
+1. **[管理者: Windows PowerShell]** ウィンドウで次のように実行して、現在の認証コンテキストを削除します。
 
     ```powershell
     Remove-AzAccount -Username $credential.UserName
     ```
 
-    >**참고**: 이제 위 단계를 같은 순서로 반복하여 Azure Stack Hub 관리자 환경에 인증할 수 있는지 유효성을 검사합니다.
+    >**注**:これ以降も、同等の手順を順次実行して、Azure Stack Hub 管理者環境の認証ができることを検証します。
 
-1. **관리자: C:\Program Files\PowerShell\7\pwsh.exe** 창에서 다음 명령을 실행하여 이 작업 앞부분에서 검색한 Azure Stack Hub 스탬프 정보를 사용해 서비스 주체를 구성하는 데 사용할 변수 값을 설정합니다. 이때 각 변수가 Azure Resource Manager 관리 작업에 사용되는 Azure Stack Hub 엔드포인트, Graph API에 액세스하는 데 사용되는 OAuth 토큰을 가져올 대상 그룹, 그리고 ID 공급자의 GUID를 참조하도록 값을 설정해야 합니다.
+1. **[管理者: Windows PowerShell]** ウィンドウで次のように実行し、このタスクで前に取得した Azure Stack Hub スタンプ情報を使用して、サービス プリンシパルを構成するための変数の値を設定します。その参照先は、それぞれ、Azure Resource Manager 管理者操作用の Azure Stack Hub エンドポイント、Graph API へのアクセスに使用する OAuth トークンを取得するための対象者、ID プロバイダーの GUID です。
 
     ```powershell
     $armAdminEndpoint = $azureStackInfo.AdminExternalEndpoints.AdminResourceManager
@@ -147,31 +152,31 @@ lab:
     $tenantID = $azureStackInfo.AADTenantID
     ```
 
-1. **관리자: C:\Program Files\PowerShell\7\pwsh.exe** 창에서 다음 명령을 실행하여 Azure Stack Hub 관리자 환경을 등록 및 설정합니다.
+1. **[管理者: Windows PowerShell]** ウィンドウで次のように実行して、Azure Stack Hub 管理者環境を登録および設定します。
 
     ```powershell
     Add-AzEnvironment -Name 'AzureStackAdmin' -ArmEndpoint $armAdminEndpoint
     ```
 
-1. **관리자: C:\Program Files\PowerShell\7\pwsh.exe** 창에서 다음 명령을 실행하여 AzureStackAdmin 환경에 서비스 주체로 로그인합니다.
+1. **[管理者: Windows PowerShell]** ウィンドウで次のように実行して、サービス プリンシパルとして AzureStackAdmin 環境にサインインします。
 
     ```powershell
     $spAdminSignIn = Connect-AzAccount -Environment 'AzureStackAdmin' -ServicePrincipal -Credential $credential -TenantId $tenantID
     ```
 
-1. **관리자: C:\Program Files\PowerShell\7\pwsh.exe** 창에서 다음 명령을 실행하여 정상적으로 로그인되었는지 확인합니다.
+1. **[管理者: Windows PowerShell]** ウィンドウで次のように実行して、サインインが成功したことを確認します。
 
     ```powershell
     $spAdminSignIn
     ```
 
-1. **관리자: C:\Program Files\PowerShell\7\pwsh.exe** 창에서 다음 명령을 실행하여 새 서비스 주체의 속성을 표시합니다.
+1. **[管理者: Windows PowerShell]** ウィンドウで次のように実行して、新しいサービス プリンシパルのプロパティを表示します。
 
     ```powershell
     $spObject
     ```
 
-    >**참고**: 출력은 다음과 같은 형식이어야 합니다.
+    >**注**:出力は次の形式でなければなりません。
 
     ```
     ApplicationIdentifier : S-1-5-21-2657257302-3827180852-1812683747-1510
@@ -183,27 +188,27 @@ lab:
     RunspaceId            : 6b142339-b67f-490e-a258-40983c0cd8ea
     ```
 
-    >**참고**: **ApplicationName** 속성의 값을 적어 둡니다. 다음 작업에서 해당 값이 필요합니다. 또한 **ClientSecret** 속성도 별도로 기록하여 관리 애플리케이션을 구현하는 개발자에게 제공해야 합니다.
+    >**注**: **ApplicationName** プロパティの値を記録しておきます。 これは、次のタスクで必要になります。 また、**ClientSecret** プロパティの値を記録し、これを管理アプリケーションを実装している開発者に示す必要があります。
 
 
-#### 작업 2: 서비스 주체에 Contributor 역할 할당
+#### <a name="task-2-assign-the-contributor-role-to-the-service-principal"></a>タスク 2:サービス プリンシパルに共同作成者ロールを割り当てる
 
-이 작업에서는 다음을 수행합니다.
+このタスクでは次のことを行います。
 
-- Azure Stack Hub 관리자 포털을 사용하여 서비스 주체에 Contributor 역할 할당
+- Azure Stack Hub 管理者ポータルを使用して、サービス プリンシパルに共同作成者ロールを割り当てる
 
-1. **AzS-HOST1**에 연결된 원격 데스크톱 세션 내에서 [Azure Stack Hub 관리자 포털](https://adminportal.local.azurestack.external/)이 표시된 웹 브라우저 창을 열고 CloudAdmin@azurestack.local로 로그인합니다.
-1. Azure Stack Hub 관리자 포털이 표시된 웹 브라우저 창의 허브 메뉴에서 **모든 서비스**를 선택합니다. 
-1. **모든 서비스** 블레이드에서 **일반**을 선택하고 서비스 목록에서 **구독**을 선택합니다.
-1. **구독** 블레이드에서 **기본 공급자 구독**을 선택합니다.
-1. **기본 공급자 구독** 블레이드에서 **IAM(액세스 제어)** 를 선택합니다.
-1. **기본 공급자 구독 | 액세스 제어(IAM)** 블레이드에서 **+ 추가**를 클릭하고 드롭다운 메뉴에서 **역할 할당 추가**를 선택합니다.
-1. **역할 할당 추가** 블레이드에서 다음 설정을 지정하고 **저장**을 클릭합니다.
+1. **AzS-HOST1** へのリモート デスクトップ セッション内で、Web ブラウザー ウィンドウを開いて [Azure Stack Hub 管理者ポータル](https://adminportal.local.azurestack.external/)を表示し、CloudAdmin@azurestack.local としてサインインします。
+1. Web ブラウザーに Azure Stack Hub 管理者ポータルが表示されている状態で、ハブ メニューで **[すべてのサービス]** を選択します。 
+1. **[すべてのサービス]** ブレードで **[全般]** を選択し、サービスの一覧で **[サブスクリプション]** を選択します。
+1. **[サブスクリプション]** ブレードで **[既定のプロバイダー サブスクリプション]** を選択します。
+1. **[既定のプロバイダー サブスクリプション]** ブレードで **[アクセス制御 (IAM)]** を選択します。
+1. **[Default Provider Subscription (既定のプロバイダー サブスクリプション) | アクセス制御 (IAM)]** ブレードで **[+ 追加]** をクリックし、ドロップダウン メニューで **[ロールの割り当ての追加]** をクリックします。
+1. **[ロール割り当ての追加]** ブレードで、次のように設定してから **[保存]** をクリックします。
 
-    - 역할: **Contributor**
-    - 다음에 대한 액세스 할당: **Azure AD 사용자, 그룹 또는 서비스 주체**
-    - 선택 사항: 이전 작업에서 확인했던 서비스 주체의 **ApplicationName** 속성 값을 검색하여 선택합니다.
+    - ロール:**Contributor**
+    - アクセスの割り当て先:**ユーザー、グループ、サービス プリンシパル**
+    - 選択: 前のタスクで確認したサービス プリンシパルの **ApplicationName** プロパティの値を検索して選択します。
 
-1. 역할이 정상적으로 할당되었음을 확인합니다.
+1. ロールの割り当てが成功したことを確認します。
 
->**검토**: 이 연습에서는 서비스 주체를 만들고 Contributor 역할을 할당했습니다. 
+>**レビュー**:この演習では、サービス プリンシパルを作成し、これを共同作成者ロールに割り当てました。 
